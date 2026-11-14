@@ -77,6 +77,12 @@ class IcarusRunConfiguration(project: Project, factory: ConfigurationFactory, na
         get() = settings.workingDirectory?.takeIf { it.isNotBlank() }?.let { runCatching { Path.of(it) }.getOrNull() }
             ?: testbenchFile?.parent
 
+    /** The module that is simulated: the configured one, by default the first testbench of the file, which is read. */
+    fun resolveTopModule(): String? =
+        settings.topModule?.takeIf { it.isNotBlank() } ?: testbenchFile?.let { file ->
+            runCatching { VerilogTestbenches.testbenches(Files.readString(file)).firstOrNull()?.name }.getOrNull()
+        }
+
     override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> = IcarusSettingsEditor(project)
 
     override fun checkConfiguration() {

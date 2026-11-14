@@ -1,6 +1,7 @@
 package com.jotrorox.verilogtoolbox
 
 import com.intellij.execution.ExecutionException
+import com.intellij.execution.Executor
 import com.intellij.execution.configurations.CommandLineState
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.OSProcessHandler
@@ -10,6 +11,8 @@ import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.ui.ConsoleView
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -31,12 +34,27 @@ import kotlin.io.path.listDirectoryEntries
 class IcarusRunState(private val configuration: IcarusRunConfiguration, environment: ExecutionEnvironment) :
     CommandLineState(environment) {
 
+    private val workingDirectory = configuration.workingDirectory
+    private val dumps = workingDirectory?.let { WaveformDumpListener(it) }
+
     init {
-        configuration.workingDirectory?.let { addConsoleFilters(IcarusConsoleFilter(configuration.project, it)) }
+        if (workingDirectory != null) {
+            addConsoleFilters(
+                IcarusConsoleFilter(configuration.project, workingDirectory),
+                WaveformConsoleFilter(configuration, workingDirectory),
+            )
+        }
     }
 
     override fun startProcess(): ProcessHandler =
-        StepsProcessHandler { IcarusCommandLines.create(configuration) }.also { ProcessTerminatedListener.attach(it) }
+        StepsProcessHandler { IcarusCommandLines.create(configuration) }.also {
+            ProcessTerminatedListener.attach(it)
+            if (dumps != null) it.addProcessListener(dumps)
+        }
+
+    override fun createActions(console: ConsoleView, processHandler: ProcessHandler, executor: Executor): Array<AnAction> =
+        super.createActions(console, processHandler, executor) +
+            listOfNotNull(dumps?.let { OpenWaveformAction(configuration, it) })
 }
 
 /** Builds the compile and simulate command lines of a run configuration. */
@@ -55,8 +73,7 @@ object IcarusCommandLines {
         val workingDirectory = configuration.workingDirectory?.takeIf { Files.isDirectory(it) }
             ?: throw ExecutionException("The working directory does not exist.")
 
-        val topModule = settings.topModule?.takeIf { it.isNotBlank() }
-            ?: runCatching { VerilogTestbenches.testbenches(Files.readString(testbench)).firstOrNull()?.name }.getOrNull()
+        val topModule = configuration.resolveTopModule()
         val design = compiledDesign(configuration)
         val libraries = libraryDirectories(configuration.project)
 

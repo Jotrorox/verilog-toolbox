@@ -12,7 +12,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 
-/** Paths of the optional tools: the slang language server and the Icarus Verilog simulator. */
+/** Paths of the optional tools: the slang language server, the Icarus Verilog simulator and the waveform viewers. */
 @Service(Service.Level.APP)
 @State(name = "VerilogToolboxToolchain", storages = [Storage("verilogToolbox.xml")])
 class ToolchainSettings :
@@ -21,6 +21,9 @@ class ToolchainSettings :
     data class State(
         @JvmField val slangServerPath: String = "",
         @JvmField val iverilogPath: String = "",
+        @JvmField val waveformViewer: WaveformViewer = WaveformViewer.GTKWAVE,
+        @JvmField val gtkwavePath: String = "",
+        @JvmField val surferPath: String = "",
     )
 
     /** Path to `slang-server`; empty means "do not run slang-server". */
@@ -37,6 +40,27 @@ class ToolchainSettings :
             updateState { it.copy(iverilogPath = value.trim()) }
         }
 
+    /** The viewer "Open Waveform" prefers. */
+    var waveformViewer: WaveformViewer
+        get() = state.waveformViewer
+        set(value) {
+            updateState { it.copy(waveformViewer = value) }
+        }
+
+    /** Path to `gtkwave`; empty means "look it up on PATH". */
+    var gtkwavePath: String
+        get() = state.gtkwavePath
+        set(value) {
+            updateState { it.copy(gtkwavePath = value.trim()) }
+        }
+
+    /** Path to `surfer`; empty means "look it up on PATH". */
+    var surferPath: String
+        get() = state.surferPath
+        set(value) {
+            updateState { it.copy(surferPath = value.trim()) }
+        }
+
     /** slang-server is opt-in: it only runs when its path is configured and points at an executable. */
     fun findSlangServer(): Path? = executable(slangServerPath)
 
@@ -47,6 +71,25 @@ class ToolchainSettings :
     /** The simulation runtime, which is installed next to the compiler. */
     fun findVvp(): Path? =
         findIverilog()?.resolveSibling(VVP_BINARY)?.takeIf { Files.isExecutable(it) } ?: findOnPath(VVP_BINARY)
+
+    /** The viewer to launch and where it is: the preferred one, or the other one if only that is installed. */
+    fun findWaveformViewer(): Pair<WaveformViewer, Path>? =
+        (listOf(waveformViewer) + WaveformViewer.entries).distinct()
+            .firstNotNullOfOrNull { viewer -> findViewer(viewer)?.let { viewer to it } }
+
+    private fun findViewer(viewer: WaveformViewer): Path? {
+        val configured = when (viewer) {
+            WaveformViewer.GTKWAVE -> gtkwavePath
+            WaveformViewer.SURFER -> surferPath
+        }
+        if (configured.isNotEmpty()) return executable(configured) ?: application(configured)
+        return findOnPath(viewer.binary) ?: viewer.macApplication?.let { application("/Applications/$it") }
+    }
+
+    /** A macOS application bundle. */
+    private fun application(path: String): Path? =
+        path.takeIf { SystemInfo.isMac && it.removeSuffix("/").endsWith(".app") }
+            ?.let { runCatching { Path.of(it) }.getOrNull() }?.takeIf { Files.isDirectory(it) }
 
     private fun executable(path: String): Path? =
         path.takeIf { it.isNotEmpty() }?.let { runCatching { Path.of(it) }.getOrNull() }
