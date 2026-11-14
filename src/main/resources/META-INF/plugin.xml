@@ -18,6 +18,22 @@
         <fileType name="Verilog" language="Verilog" extensions="v;vh;sv;svh" fieldName="INSTANCE"
                   implementationClass="com.jotrorox.verilogtoolbox.VerilogFileType"/>
 
+        <lang.parserDefinition language="Verilog"
+                               implementationClass="com.jotrorox.verilogtoolbox.VerilogParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="Verilog"
+                                       implementationClass="com.jotrorox.verilogtoolbox.VerilogSyntaxHighlighterFactory"/>
+        <annotator language="Verilog"
+                   implementationClass="com.jotrorox.verilogtoolbox.VerilogDeclarationAnnotator"/>
+        <colorSettingsPage implementation="com.jotrorox.verilogtoolbox.VerilogColorSettingsPage"/>
+        <additionalTextAttributes scheme="Default" file="colorSchemes/VerilogDefault.xml"/>
+        <additionalTextAttributes scheme="Darcula" file="colorSchemes/VerilogDarcula.xml"/>
+        <lang.commenter language="Verilog"
+                        implementationClass="com.jotrorox.verilogtoolbox.VerilogCommenter"/>
+        <lang.braceMatcher language="Verilog"
+                           implementationClass="com.jotrorox.verilogtoolbox.VerilogBraceMatcher"/>
+        <lang.quoteHandler language="Verilog"
+                           implementationClass="com.jotrorox.verilogtoolbox.VerilogQuoteHandler"/>
+
         <!-- Verible language server: diagnostics, formatting and quick-fixes. -->
         <platform.lsp.integrationProvider
                 implementation="com.jotrorox.verilogtoolbox.VeribleLspIntegrationProvider"/>

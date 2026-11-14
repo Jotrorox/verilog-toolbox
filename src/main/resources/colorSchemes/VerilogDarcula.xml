@@ -1,0 +1,13 @@
+<?xml version='1.0'?>
+<list>
+    <option name="VERILOG_TYPE">
+        <value>
+            <option name="FOREGROUND" value="C77DBB"/>
+        </value>
+    </option>
+    <option name="VERILOG_SYSTEM_TASK">
+        <value>
+            <option name="FOREGROUND" value="56A8F5"/>
+        </value>
+    </option>
+</list>
