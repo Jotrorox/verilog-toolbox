@@ -6,10 +6,13 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.toNullableProperty
 import java.io.IOException
 import java.nio.file.Path
 
@@ -68,6 +71,31 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                         "(500–750 MB) from github.com/YosysHQ/oss-cad-suite-build and keeps only Icarus Verilog."
                 )
             }.visible(toolchain.findIverilog() == null)
+        }
+        group("Waveform Viewer") {
+            row("Viewer:") {
+                comboBox(WaveformViewer.entries)
+                    .bindItem(toolchain::waveformViewer.toNullableProperty())
+                    .comment(
+                        "Opens the waveform a simulation dumps, with the signals saved for its testbench. " +
+                            "If this viewer is not installed, the other one is used."
+                    )
+            }
+            row("Path to gtkwave:") {
+                textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select gtkwave"))
+                    .bindText(toolchain::gtkwavePath)
+                    .align(AlignX.FILL)
+                    .comment(
+                        "Leave empty to use the gtkwave found on your PATH" +
+                            (if (SystemInfo.isMac) " or /Applications/gtkwave.app." else ".")
+                    )
+            }
+            row("Path to surfer:") {
+                textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select surfer"))
+                    .bindText(toolchain::surferPath)
+                    .align(AlignX.FILL)
+                    .comment("Leave empty to use the surfer found on your PATH.")
+            }
         }
     }
 
