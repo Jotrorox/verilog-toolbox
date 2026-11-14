@@ -24,7 +24,7 @@ class VeribleSettings :
             updateState { it.copy(languageServerPath = value.trim()) }
         }
 
-    /** The language server to launch: the configured path if valid, otherwise the one on PATH. */
+    /** The optional Verible language server: the configured path if valid, otherwise the one on PATH. */
     fun findLanguageServer(): Path? {
         val configured = languageServerPath
         if (configured.isNotEmpty()) {

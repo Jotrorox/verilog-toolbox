@@ -12,25 +12,41 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 
-/** Paths of the optional tools: the slang language server, the Icarus Verilog simulator and the waveform viewers. */
+/** Settings of the slang language server, the Icarus Verilog simulator and the waveform viewers. */
 @Service(Service.Level.APP)
 @State(name = "VerilogToolboxToolchain", storages = [Storage("verilogToolbox.xml")])
 class ToolchainSettings :
     SerializablePersistentStateComponent<ToolchainSettings.State>(State()) {
 
     data class State(
+        @JvmField val slangServerEnabled: Boolean = true,
         @JvmField val slangServerPath: String = "",
+        @JvmField val slangServerAutoDownload: Boolean = true,
         @JvmField val iverilogPath: String = "",
         @JvmField val waveformViewer: WaveformViewer = WaveformViewer.GTKWAVE,
         @JvmField val gtkwavePath: String = "",
         @JvmField val surferPath: String = "",
     )
 
-    /** Path to `slang-server`; empty means "do not run slang-server". */
+    /** Whether slang-server, the default language server, is used at all. */
+    var slangServerEnabled: Boolean
+        get() = state.slangServerEnabled
+        set(value) {
+            updateState { it.copy(slangServerEnabled = value) }
+        }
+
+    /** Path to `slang-server`; empty means "use the downloaded copy, or the one on PATH". */
     var slangServerPath: String
         get() = state.slangServerPath
         set(value) {
             updateState { it.copy(slangServerPath = value.trim()) }
+        }
+
+    /** Whether slang-server is downloaded without asking when none is found. */
+    var slangServerAutoDownload: Boolean
+        get() = state.slangServerAutoDownload
+        set(value) {
+            updateState { it.copy(slangServerAutoDownload = value) }
         }
 
     /** Path to `iverilog`; empty means "look it up on PATH". */
@@ -61,8 +77,15 @@ class ToolchainSettings :
             updateState { it.copy(surferPath = value.trim()) }
         }
 
-    /** slang-server is opt-in: it only runs when its path is configured and points at an executable. */
-    fun findSlangServer(): Path? = executable(slangServerPath)
+    /**
+     * The slang-server to launch: the configured path if valid, otherwise the copy the plugin downloaded,
+     * otherwise the one on PATH. `null` when it is switched off or not installed.
+     */
+    fun findSlangServer(): Path? = when {
+        !slangServerEnabled -> null
+        slangServerPath.isNotEmpty() -> executable(slangServerPath)
+        else -> SlangServerDownloader.installed() ?: findOnPath(SLANG_SERVER_BINARY)
+    }
 
     /** The compiler to run: the configured path if valid, otherwise the one on PATH. */
     fun findIverilog(): Path? =
@@ -102,6 +125,7 @@ class ToolchainSettings :
                 ?.firstNotNullOfOrNull { executable("$it/$binary") }
 
     companion object {
+        val SLANG_SERVER_BINARY: String = if (SystemInfo.isWindows) "slang-server.exe" else "slang-server"
         val IVERILOG_BINARY: String = if (SystemInfo.isWindows) "iverilog.exe" else "iverilog"
         val VVP_BINARY: String = if (SystemInfo.isWindows) "vvp.exe" else "vvp"
         private val HOMEBREW_DIRECTORIES = listOf("/opt/homebrew/bin", "/usr/local/bin")

@@ -1,8 +1,11 @@
 package com.jotrorox.verilogtoolbox
 
+import com.intellij.codeInsight.intention.IntentionAction
 import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.LspClient
 import com.intellij.platform.lsp.api.LspClientManager
@@ -10,6 +13,7 @@ import com.intellij.platform.lsp.api.LspIntegrationProvider
 import com.intellij.platform.lsp.api.ProjectWideLspClientDescriptor
 import com.intellij.platform.lsp.api.customization.LspCompletionDisabled
 import com.intellij.platform.lsp.api.customization.LspCustomization
+import com.intellij.platform.lsp.api.customization.LspDiagnosticsSupport
 import com.intellij.platform.lsp.api.customization.LspDocumentHighlightsDisabled
 import com.intellij.platform.lsp.api.customization.LspDocumentSymbolDisabled
 import com.intellij.platform.lsp.api.customization.LspFindReferencesDisabled
@@ -19,9 +23,13 @@ import com.intellij.platform.lsp.api.customization.LspHoverDisabled
 import com.intellij.platform.lsp.api.customization.LspRenameDisabled
 import com.intellij.platform.lsp.api.lsWidget.LspClientWidgetItem
 import com.intellij.ui.EditorNotifications
+import org.eclipse.lsp4j.Diagnostic
 import java.nio.file.Path
 
-/** Starts Verible's language server for Verilog files: diagnostics, formatting and quick-fixes. */
+/**
+ * Starts Verible's language server when it is installed. Next to slang-server it adds formatting, style lint
+ * and its quick-fixes; without slang-server it is the only language server and does everything it can.
+ */
 class VeribleLspIntegrationProvider : LspIntegrationProvider {
     override fun fileOpened(
         project: Project,
@@ -62,7 +70,7 @@ private class VeribleLspClientDescriptor(project: Project, private val executabl
             .withWorkDirectory(project.basePath)
             .withCharset(Charsets.UTF_8)
 
-    // With slang-server running, leave navigation, hover and completion to it instead of answering twice.
+    // With slang-server running, leave what both servers can do to it instead of answering twice.
     override val lspCustomization: LspCustomization =
         if (ToolchainSettings.getInstance().findSlangServer() == null) LspCustomization()
         else object : LspCustomization() {
@@ -74,5 +82,23 @@ private class VeribleLspClientDescriptor(project: Project, private val executabl
             override val renameCustomizer = LspRenameDisabled
             override val documentSymbolCustomizer = LspDocumentSymbolDisabled
             override val documentHighlightsCustomizer = LspDocumentHighlightsDisabled
+
+            // slang-server reports syntax errors too, and more precisely. Verible's lint findings stay.
+            override val diagnosticsCustomizer = object : LspDiagnosticsSupport() {
+                override fun createAnnotation(
+                    holder: AnnotationHolder,
+                    diagnostic: Diagnostic,
+                    textRange: TextRange,
+                    quickFixes: List<IntentionAction>,
+                ) {
+                    if (isVeribleSyntaxError(diagnostic.message)) return
+                    super.createAnnotation(holder, diagnostic, textRange, quickFixes)
+                }
+            }
         }
 }
+
+/** Whether a Verible diagnostic is a parse error rather than a lint finding, which ends in its `[rule-name]`. */
+internal fun isVeribleSyntaxError(message: String?): Boolean =
+    message != null && !message.trimEnd().endsWith("]") &&
+        (message.startsWith("syntax error") || message.startsWith("Parse error"))

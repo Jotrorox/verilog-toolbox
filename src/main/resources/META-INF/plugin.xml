@@ -5,7 +5,8 @@
     <vendor>Jotrorox</vendor>
 
     <description><![CDATA[
-        Verilog and SystemVerilog support for CLion, with Icarus Verilog and GTKWave integration.
+        Verilog and SystemVerilog support for CLion: code insight from the slang-server language server,
+        which is downloaded automatically, plus Icarus Verilog and GTKWave integration.
         ]]></description>
 
     <!-- Platform module for the base APIs; LSP module for the Verible and slang language servers. -->
@@ -34,17 +35,17 @@
         <lang.quoteHandler language="Verilog"
                            implementationClass="com.jotrorox.verilogtoolbox.VerilogQuoteHandler"/>
 
-        <!-- Verible language server: diagnostics, formatting and quick-fixes. -->
-        <platform.lsp.integrationProvider
-                implementation="com.jotrorox.verilogtoolbox.VeribleLspIntegrationProvider"/>
-        <!-- slang-server: optional second server for navigation, hover and completion. -->
+        <!-- slang-server: the default language server, downloaded when it is missing. -->
         <platform.lsp.integrationProvider
                 implementation="com.jotrorox.verilogtoolbox.SlangLspIntegrationProvider"/>
+        <!-- Verible language server: optional second server for formatting and style lint. -->
+        <platform.lsp.integrationProvider
+                implementation="com.jotrorox.verilogtoolbox.VeribleLspIntegrationProvider"/>
         <applicationConfigurable parentId="tools" id="com.jotrorox.verilogtoolbox.settings"
                                  displayName="Verilog Toolbox"
                                  instance="com.jotrorox.verilogtoolbox.VeribleConfigurable"/>
         <editorNotificationProvider
-                implementation="com.jotrorox.verilogtoolbox.VeribleNotificationProvider"/>
+                implementation="com.jotrorox.verilogtoolbox.LanguageServerNotificationProvider"/>
         <notificationGroup id="Verilog Toolbox" displayType="BALLOON"/>
 
         <!-- Icarus Verilog: compile a testbench with iverilog and simulate it with vvp. -->
@@ -54,4 +55,24 @@
         <runLineMarkerContributor language="Verilog"
                                   implementationClass="com.jotrorox.verilogtoolbox.IcarusRunLineMarkerContributor"/>
     </extensions>
+
+    <actions>
+        <!-- The design slang-server elaborates: a top-level file or a build (.f) file. -->
+        <action id="VerilogToolbox.SlangSelectDesign"
+                class="com.jotrorox.verilogtoolbox.SlangSelectDesignAction"
+                text="Set as slang-server Top Level"
+                description="Make slang-server elaborate the design below this file, or the files this build file lists">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="VerilogToolbox.SlangClearDesign"
+                class="com.jotrorox.verilogtoolbox.SlangClearDesignAction"
+                text="Clear slang-server Top Level"
+                description="Make slang-server check every file on its own again">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>

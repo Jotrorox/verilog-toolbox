@@ -10,47 +10,68 @@ import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindItem
+import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.toNullableProperty
 import java.io.IOException
 import java.nio.file.Path
+import javax.swing.JEditorPane
 
 /** Settings | Tools | Verilog Toolbox. */
 class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
     private val settings = VeribleSettings.getInstance()
     private val toolchain = ToolchainSettings.getInstance()
     private lateinit var pathField: TextFieldWithBrowseButton
+    private lateinit var slangField: TextFieldWithBrowseButton
+    private lateinit var slangStatus: JEditorPane
     private lateinit var iverilogField: TextFieldWithBrowseButton
 
     override fun createPanel(): DialogPanel = panel {
-        group("Verible Language Server") {
+        group("slang Language Server") {
+            row {
+                checkBox("Use slang-server")
+                    .bindSelected(toolchain::slangServerEnabled)
+                    .comment(
+                        "The default language server: diagnostics, navigation, hover, completion, rename and " +
+                            "inlay hints. A project is configured in <code>.slang/server.json</code>, see the " +
+                            "<a href=\"https://hudson-trading.github.io/slang-server/start/config/\">documentation</a>."
+                    )
+            }
+            row("Path to slang-server:") {
+                slangField = textFieldWithBrowseButton(
+                    FileChooserDescriptorFactory.singleFile().withTitle("Select slang-server")
+                )
+                    .bindText(toolchain::slangServerPath)
+                    .align(AlignX.FILL)
+                    .comment("Leave empty to use the downloaded slang-server, or else the one found on your PATH.")
+                    .component
+            }
+            row {
+                checkBox("Download slang-server automatically when it is not installed")
+                    .bindSelected(toolchain::slangServerAutoDownload)
+            }
+            row {
+                button("Download Latest slang-server") { downloadSlang() }
+                slangStatus = comment(slangStatusText()).component
+            }
+        }
+        group("Verible Language Server (Optional)") {
             row("Path to verible-verilog-ls:") {
                 pathField = textFieldWithBrowseButton(
                     FileChooserDescriptorFactory.singleFile().withTitle("Select verible-verilog-ls")
                 )
                     .bindText(settings::languageServerPath)
                     .align(AlignX.FILL)
-                    .comment("Leave empty to use the verible-verilog-ls found on your PATH.")
+                    .comment(
+                        "Adds formatting and style lint, which slang-server does not have. " +
+                            "Leave empty to use the verible-verilog-ls found on your PATH."
+                    )
                     .component
             }
             row {
                 button("Download Verible") { download() }
                 comment("Fetches the latest prebuilt release from github.com/chipsalliance/verible.")
-            }
-        }
-        group("slang Language Server (Optional)") {
-            row("Path to slang-server:") {
-                textFieldWithBrowseButton(
-                    FileChooserDescriptorFactory.singleFile().withTitle("Select slang-server")
-                )
-                    .bindText(toolchain::slangServerPath)
-                    .align(AlignX.FILL)
-                    .comment(
-                        "Runs next to Verible and takes over go-to-definition, hover and completion. " +
-                            "Leave empty to use Verible alone. Releases: " +
-                            "<a href=\"https://github.com/hudson-trading/slang-server/releases\">github.com/hudson-trading/slang-server</a>."
-                    )
             }
         }
         group("Icarus Verilog") {
@@ -96,6 +117,28 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                     .align(AlignX.FILL)
                     .comment("Leave empty to use the surfer found on your PATH.")
             }
+        }
+    }
+
+    private fun slangStatusText(): String {
+        val installed = SlangServerDownloader.installed()
+            ?: return "Fetches the latest prebuilt release from github.com/hudson-trading/slang-server (MIT license)."
+        return "Downloaded: ${installed.parent.fileName}. This fetches a newer release if there is one."
+    }
+
+    private fun downloadSlang() {
+        try {
+            ProgressManager.getInstance().runProcessWithProgressSynchronously(
+                ThrowableComputable<Path, IOException> {
+                    SlangServerDownloader.downloadLatest(ProgressManager.getInstance().progressIndicator)
+                },
+                "Downloading slang-server", true, null,
+            )
+            // The downloaded copy is what an empty path stands for.
+            slangField.text = ""
+            slangStatus.text = slangStatusText()
+        } catch (e: IOException) {
+            Messages.showErrorDialog(slangField, e.message ?: e.toString(), "slang-server Download Failed")
         }
     }
 
