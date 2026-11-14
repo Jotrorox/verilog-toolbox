@@ -1,0 +1,31 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <id>com.jotrorox.verilogtoolbox</id>
+    <name>Verilog Toolbox</name>
+    <vendor>Jotrorox</vendor>
+
+    <description><![CDATA[
+        Verilog and SystemVerilog support for CLion, with Icarus Verilog and GTKWave integration.
+        ]]></description>
+
+    <!-- Platform module for the base APIs; LSP module for the planned Verible language server. -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lsp</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <errorHandler implementation="com.intellij.diagnostic.JetBrainsMarketplaceErrorReportSubmitter"/>
+
+        <fileType name="Verilog" language="Verilog" extensions="v;vh;sv;svh" fieldName="INSTANCE"
+                  implementationClass="com.jotrorox.verilogtoolbox.VerilogFileType"/>
+
+        <!-- Verible language server: diagnostics, formatting and quick-fixes. -->
+        <platform.lsp.integrationProvider
+                implementation="com.jotrorox.verilogtoolbox.VeribleLspIntegrationProvider"/>
+        <applicationConfigurable parentId="tools" id="com.jotrorox.verilogtoolbox.settings"
+                                 displayName="Verilog Toolbox"
+                                 instance="com.jotrorox.verilogtoolbox.VeribleConfigurable"/>
+        <editorNotificationProvider
+                implementation="com.jotrorox.verilogtoolbox.VeribleNotificationProvider"/>
+        <notificationGroup id="Verilog Toolbox" displayType="BALLOON"/>
+    </extensions>
+</idea-plugin>
