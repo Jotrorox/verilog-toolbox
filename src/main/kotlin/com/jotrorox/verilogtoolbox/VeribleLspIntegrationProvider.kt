@@ -8,6 +8,15 @@ import com.intellij.platform.lsp.api.LspClient
 import com.intellij.platform.lsp.api.LspClientManager
 import com.intellij.platform.lsp.api.LspIntegrationProvider
 import com.intellij.platform.lsp.api.ProjectWideLspClientDescriptor
+import com.intellij.platform.lsp.api.customization.LspCompletionDisabled
+import com.intellij.platform.lsp.api.customization.LspCustomization
+import com.intellij.platform.lsp.api.customization.LspDocumentHighlightsDisabled
+import com.intellij.platform.lsp.api.customization.LspDocumentSymbolDisabled
+import com.intellij.platform.lsp.api.customization.LspFindReferencesDisabled
+import com.intellij.platform.lsp.api.customization.LspGoToDefinitionDisabled
+import com.intellij.platform.lsp.api.customization.LspGoToTypeDefinitionDisabled
+import com.intellij.platform.lsp.api.customization.LspHoverDisabled
+import com.intellij.platform.lsp.api.customization.LspRenameDisabled
 import com.intellij.platform.lsp.api.lsWidget.LspClientWidgetItem
 import com.intellij.ui.EditorNotifications
 import java.nio.file.Path
@@ -28,12 +37,13 @@ class VeribleLspIntegrationProvider : LspIntegrationProvider {
         LspClientWidgetItem(lspClient, currentFile, settingsPageClass = VeribleConfigurable::class.java)
 
     companion object {
-        /** Applies a changed language server path: restarts running servers and refreshes editor banners. */
+        /** Applies changed language server paths: restarts running servers and refreshes editor banners. */
         fun restartEverywhere() {
             for (project in ProjectManager.getInstance().openProjects) {
                 if (project.isDisposed) continue
-                LspClientManager.getInstance(project)
-                    .stopAndRestartClientsIfNeeded(VeribleLspIntegrationProvider::class.java)
+                val clients = LspClientManager.getInstance(project)
+                clients.stopAndRestartClientsIfNeeded(VeribleLspIntegrationProvider::class.java)
+                clients.stopAndRestartClientsIfNeeded(SlangLspIntegrationProvider::class.java)
                 EditorNotifications.getInstance(project).updateAllNotifications()
             }
         }
@@ -51,4 +61,18 @@ private class VeribleLspClientDescriptor(project: Project, private val executabl
         GeneralCommandLine(executable.toString(), "--rules_config_search")
             .withWorkDirectory(project.basePath)
             .withCharset(Charsets.UTF_8)
+
+    // With slang-server running, leave navigation, hover and completion to it instead of answering twice.
+    override val lspCustomization: LspCustomization =
+        if (ToolchainSettings.getInstance().findSlangServer() == null) LspCustomization()
+        else object : LspCustomization() {
+            override val goToDefinitionCustomizer = LspGoToDefinitionDisabled
+            override val goToTypeDefinitionCustomizer = LspGoToTypeDefinitionDisabled
+            override val hoverCustomizer = LspHoverDisabled
+            override val completionCustomizer = LspCompletionDisabled
+            override val findReferencesCustomizer = LspFindReferencesDisabled
+            override val renameCustomizer = LspRenameDisabled
+            override val documentSymbolCustomizer = LspDocumentSymbolDisabled
+            override val documentHighlightsCustomizer = LspDocumentHighlightsDisabled
+        }
 }
