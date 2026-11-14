@@ -1,24 +1,18 @@
 package com.jotrorox.verilogtoolbox
 
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.NioFiles
 import com.intellij.util.io.Decompressor
-import com.intellij.util.io.HttpRequests
 import com.intellij.util.system.CpuArch
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
-import java.security.MessageDigest
 import kotlin.io.path.name
 
 /** Downloads the prebuilt Verible release for this machine from GitHub. */
 object VeribleDownloader {
-    private const val LATEST_RELEASE_URL = "https://api.github.com/repos/chipsalliance/verible/releases/latest"
-
     /** Verible versions are unpacked into `<IDE system dir>/verilog-toolbox/verible/<tag>`. */
     private val installRoot: Path
         get() = PathManager.getSystemDir().resolve("verilog-toolbox").resolve("verible")
@@ -44,13 +38,10 @@ object VeribleDownloader {
     fun downloadLatest(indicator: ProgressIndicator): Path {
         indicator.isIndeterminate = true
         indicator.text = "Looking up the latest Verible release…"
-        val release = JsonParser.parseString(
-            HttpRequests.request(LATEST_RELEASE_URL).accept("application/vnd.github+json").readString(indicator)
-        ).asJsonObject
-        val tag = release["tag_name"].asString
+        val release = GitHubReleases.latest("chipsalliance/verible", indicator)
+        val tag = release.tag
         val suffix = assetSuffix()
-        val asset = release["assets"].asJsonArray.map { it.asJsonObject }
-            .firstOrNull { it["name"].asString.endsWith(suffix) }
+        val asset = release.assets.firstOrNull { it.name.endsWith(suffix) }
             ?: throw IOException("Verible release $tag has no '*$suffix' download.")
 
         val target = installRoot.resolve(tag)
@@ -59,8 +50,7 @@ object VeribleDownloader {
         val archive = Files.createTempFile("verible", suffix)
         try {
             indicator.text = "Downloading Verible $tag…"
-            HttpRequests.request(asset["browser_download_url"].asString).saveToFile(archive, indicator)
-            verifyDigest(archive, asset)
+            asset.download(archive, indicator)
 
             indicator.isIndeterminate = true
             indicator.text = "Unpacking Verible $tag…"
@@ -73,25 +63,6 @@ object VeribleDownloader {
         }
         return findLanguageServer(target)
             ?: throw IOException("The Verible $tag download does not contain ${VeribleSettings.LANGUAGE_SERVER_BINARY}.")
-    }
-
-    /** Checks the archive against the SHA-256 digest GitHub reports for the asset, when it reports one. */
-    private fun verifyDigest(archive: Path, asset: JsonObject) {
-        val expected = asset["digest"]?.takeIf { it.isJsonPrimitive }?.asString
-            ?.removePrefix("sha256:")?.takeIf { it.length == 64 } ?: return
-        val sha = MessageDigest.getInstance("SHA-256")
-        Files.newInputStream(archive).use { input ->
-            val buffer = ByteArray(1 shl 16)
-            while (true) {
-                val read = input.read(buffer)
-                if (read < 0) break
-                sha.update(buffer, 0, read)
-            }
-        }
-        val actual = sha.digest().joinToString("") { "%02x".format(it) }
-        if (!actual.equals(expected, ignoreCase = true)) {
-            throw IOException("The Verible download is corrupted (checksum mismatch). Please try again.")
-        }
     }
 
     private fun findLanguageServer(dir: Path): Path? {

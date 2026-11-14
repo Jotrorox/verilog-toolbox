@@ -8,7 +8,7 @@
         Verilog and SystemVerilog support for CLion, with Icarus Verilog and GTKWave integration.
         ]]></description>
 
-    <!-- Platform module for the base APIs; LSP module for the planned Verible language server. -->
+    <!-- Platform module for the base APIs; LSP module for the Verible and slang language servers. -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lsp</depends>
 
@@ -37,11 +37,21 @@
         <!-- Verible language server: diagnostics, formatting and quick-fixes. -->
         <platform.lsp.integrationProvider
                 implementation="com.jotrorox.verilogtoolbox.VeribleLspIntegrationProvider"/>
+        <!-- slang-server: optional second server for navigation, hover and completion. -->
+        <platform.lsp.integrationProvider
+                implementation="com.jotrorox.verilogtoolbox.SlangLspIntegrationProvider"/>
         <applicationConfigurable parentId="tools" id="com.jotrorox.verilogtoolbox.settings"
                                  displayName="Verilog Toolbox"
                                  instance="com.jotrorox.verilogtoolbox.VeribleConfigurable"/>
         <editorNotificationProvider
                 implementation="com.jotrorox.verilogtoolbox.VeribleNotificationProvider"/>
         <notificationGroup id="Verilog Toolbox" displayType="BALLOON"/>
+
+        <!-- Icarus Verilog: compile a testbench with iverilog and simulate it with vvp. -->
+        <configurationType implementation="com.jotrorox.verilogtoolbox.IcarusConfigurationType"/>
+        <runConfigurationProducer
+                implementation="com.jotrorox.verilogtoolbox.IcarusRunConfigurationProducer"/>
+        <runLineMarkerContributor language="Verilog"
+                                  implementationClass="com.jotrorox.verilogtoolbox.IcarusRunLineMarkerContributor"/>
     </extensions>
 </idea-plugin>
