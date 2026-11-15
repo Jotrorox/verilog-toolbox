@@ -22,8 +22,13 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * The design slang-server elaborates for this project: a top-level file or a build (`.f`) file. Without
- * one the server checks each file on its own; with one it reports errors across the whole hierarchy.
+ * The design of this project: a top-level file or a file list (`.f`, a build file to slang-server).
+ * Without one slang-server checks each file on its own; with one it reports errors across the whole
+ * hierarchy. A file list is the design for Icarus runs too, so that both tools take their sources, include
+ * directories and defines from one place; a top-level file only concerns slang-server.
+ *
+ * The names of the class and its state date from when only slang-server used the selection, and stay
+ * so that workspaces keep theirs.
  */
 @Service(Service.Level.PROJECT)
 @State(name = "VerilogToolboxSlangDesign", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
@@ -34,6 +39,14 @@ class SlangDesign(private val project: Project) :
 
     /** The top-level or build file, or empty when no design is selected. */
     val path: String get() = state.path
+
+    /** Whether the selection is a file list rather than a top-level file. */
+    val isFileList: Boolean get() = state.buildFile
+
+    /** The selected file list, or null when none is selected or it no longer exists. */
+    val fileList: Path?
+        get() = state.takeIf { it.buildFile && it.path.isNotEmpty() }
+            ?.let { runCatching { Path.of(it.path) }.getOrNull() }?.takeIf { Files.isRegularFile(it) }
 
     fun select(file: VirtualFile) {
         updateState { State(file.path, file.isBuildFile()) }
@@ -79,32 +92,37 @@ class SlangDesign(private val project: Project) :
 /** A file list for the slang driver, such as `compile.f`. */
 private fun VirtualFile.isBuildFile(): Boolean = extension?.lowercase() == "f"
 
-private fun AnActionEvent.slangFile(): VirtualFile? =
+/**
+ * The file a design can be selected from. A file list is offered even while slang-server is switched
+ * off, because Icarus runs use it; a top-level file means something to slang-server only.
+ */
+private fun AnActionEvent.designFile(): VirtualFile? =
     getData(CommonDataKeys.VIRTUAL_FILE)?.takeIf {
-        !it.isDirectory && it.isInLocalFileSystem && ToolchainSettings.getInstance().slangServerEnabled
+        !it.isDirectory && it.isInLocalFileSystem &&
+            (it.isBuildFile() || it.isVerilog() && ToolchainSettings.getInstance().slangServerEnabled)
     }
 
-/** Makes the selected Verilog file the top level, or the selected `.f` file the build, of slang-server's design. */
+/** Makes the selected `.f` file the project's design file list, or the selected Verilog file slang-server's top level. */
 class SlangSelectDesignAction : DumbAwareAction() {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
         val project = e.project
-        val file = e.slangFile()?.takeIf { it.isBuildFile() || it.isVerilog() }
+        val file = e.designFile()
         e.presentation.isEnabledAndVisible =
             project != null && file != null && file.path != SlangDesign.getInstance(project).path
         if (file != null) {
-            e.presentation.text = if (file.isBuildFile()) "Use as slang-server Build File" else "Set as slang-server Top Level"
+            e.presentation.text = if (file.isBuildFile()) "Use as Design File List" else "Set as slang-server Top Level"
         }
     }
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        val file = e.slangFile() ?: return
+        val file = e.designFile() ?: return
         SlangDesign.getInstance(project).select(file)
         NotificationGroupManager.getInstance().getNotificationGroup("Verilog Toolbox")
             .createNotification(
-                if (file.isBuildFile()) "slang-server now elaborates the files listed in ${file.name}."
+                if (file.isBuildFile()) "slang-server and Icarus Verilog runs now use the design listed in ${file.name}."
                 else "slang-server now elaborates the design below ${file.name}.",
                 NotificationType.INFORMATION,
             )
@@ -112,13 +130,17 @@ class SlangSelectDesignAction : DumbAwareAction() {
     }
 }
 
-/** Returns slang-server to checking every file on its own. */
+/** Drops the selection: slang-server checks every file on its own again, Icarus runs compile the testbench's directory. */
 class SlangClearDesignAction : DumbAwareAction() {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
         val project = e.project
         e.presentation.isEnabledAndVisible = project != null && SlangDesign.getInstance(project).path.isNotEmpty()
+        if (project != null) {
+            e.presentation.text =
+                if (SlangDesign.getInstance(project).isFileList) "Clear Design File List" else "Clear slang-server Top Level"
+        }
     }
 
     override fun actionPerformed(e: AnActionEvent) {

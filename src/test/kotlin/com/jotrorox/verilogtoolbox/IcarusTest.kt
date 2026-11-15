@@ -76,6 +76,26 @@ class IcarusTest {
     }
 
     @Test
+    fun packagesAreCompiledBeforeTheFilesThatImportThem() {
+        val testbench = folder.newFile("tb.sv").toPath().also { it.toFile().writeText("import types_pkg::*;\nmodule tb;\nendmodule\n") }
+        val design = folder.newFile("alu.sv").toPath().also { it.toFile().writeText("// no package here\nmodule alu;\nendmodule\n") }
+        val types = folder.newFile("types_pkg.sv").toPath().also { it.toFile().writeText("`timescale 1ns/1ps\n  package types_pkg;\nendpackage\n") }
+        val bus = folder.newFile("bus_pkg.sv").toPath().also { it.toFile().writeText("package automatic bus_pkg;\nendpackage\n") }
+        assertEquals(listOf(bus, types, testbench, design), IcarusCommandLines.sources(testbench, folder.root.toPath(), ""))
+    }
+
+    @Test
+    fun configuredSourcesKeepTheirOrder() {
+        val testbench = folder.newFile("tb.sv").toPath()
+        val types = folder.newFile("types_pkg.sv").toPath().also { it.toFile().writeText("package types_pkg;\nendpackage\n") }
+        val design = folder.newFile("alu.sv").toPath()
+        assertEquals(
+            listOf(testbench, design, types),
+            IcarusCommandLines.sources(testbench, folder.root.toPath(), "alu.sv types_pkg.sv"),
+        )
+    }
+
+    @Test
     fun configuredSourcesReplaceTheDefault() {
         val testbench = folder.newFile("tb.v").toPath()
         folder.newFile("counter.sv")
@@ -83,6 +103,35 @@ class IcarusTest {
         assertEquals(
             listOf(testbench, root.resolve("rtl/a.v"), root.resolve("my rtl/b.v")),
             IcarusCommandLines.sources(testbench, root, "rtl/a.v \"my rtl/b.v\" tb.v"),
+        )
+    }
+
+    private fun fileList(text: String): FileList {
+        val root = folder.root.toPath()
+        return FileList.parse(folder.newFile("design.f").toPath().also { it.toFile().writeText(text) }, root)
+    }
+
+    @Test
+    fun fileListBecomesCompilerArguments() {
+        val root = folder.root.toPath().toAbsolutePath().normalize()
+        val design = fileList("rtl/a.sv -I inc +define+W=8+FAST -y lib +libext+.vp -v cells.v --top chip --std latest")
+        assertEquals(
+            listOf(
+                "-s", "tb", "-I", "$root/inc", "-D", "W=8", "-D", "FAST", "-y", "$root/lib", "-Y", ".sv", "-Y", ".vp",
+                "-l", "$root/cells.v", "$root/rtl/a.sv", "$root/tb.v",
+            ),
+            IcarusCommandLines.designArguments(design, root.resolve("tb.v"), "tb"),
+        )
+    }
+
+    @Test
+    fun fileListNamesTheTopWhenTheRunDoesNot() {
+        val root = folder.root.toPath().toAbsolutePath().normalize()
+        // A testbench the list names already is not compiled twice, and stays where the list has it.
+        val design = fileList("tb.v rtl/a.sv --top tb,glbl")
+        assertEquals(
+            listOf("-s", "tb", "-s", "glbl", "$root/tb.v", "$root/rtl/a.sv"),
+            IcarusCommandLines.designArguments(design, root.resolve("sub/../tb.v"), null),
         )
     }
 }

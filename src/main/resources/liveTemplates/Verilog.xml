@@ -1,0 +1,104 @@
+<templateSet group="Verilog">
+  <template name="always_ff" value="always_ff @(posedge $CLK$ or negedge $RST$) begin&#10;    if (!$RST$) begin&#10;        $RESET$&#10;    end else begin&#10;        $END$&#10;    end&#10;end" description="always_ff block with clock and asynchronous reset" toReformat="false" toShortenFQNames="false">
+    <variable name="CLK" expression="" defaultValue='"clk"' alwaysStopAt="true"/>
+    <variable name="RST" expression="" defaultValue='"rst_n"' alwaysStopAt="true"/>
+    <variable name="RESET" expression="" defaultValue="" alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="always_comb" value="always_comb begin&#10;    $END$&#10;end" description="always_comb block" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="always_latch" value="always_latch begin&#10;    $END$&#10;end" description="always_latch block" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="always" value="always @(posedge $CLK$) begin&#10;    $END$&#10;end" description="always @(posedge clk) block" toReformat="false" toShortenFQNames="false">
+    <variable name="CLK" expression="" defaultValue='"clk"' alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="initial" value="initial begin&#10;    $END$&#10;end" description="initial block" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="begin" value="begin&#10;    $END$&#10;end" description="begin ... end block" toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="if" value="if ($COND$) begin&#10;    $END$&#10;end" description="if block" toReformat="false" toShortenFQNames="false">
+    <variable name="COND" expression="" defaultValue="" alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="ifelse" value="if ($COND$) begin&#10;    $END$&#10;end else begin&#10;&#10;end" description="if ... else block" toReformat="false" toShortenFQNames="false">
+    <variable name="COND" expression="" defaultValue="" alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="case" value="case ($EXPR$)&#10;    $VALUE$: $END$&#10;    default: ;&#10;endcase" description="case statement" toReformat="false" toShortenFQNames="false">
+    <variable name="EXPR" expression="" defaultValue="" alwaysStopAt="true"/>
+    <variable name="VALUE" expression="" defaultValue="" alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="for" value="for (int $I$ = 0; $I$ &lt; $N$; $I$++) begin&#10;    $END$&#10;end" description="for loop" toReformat="false" toShortenFQNames="false">
+    <variable name="I" expression="" defaultValue='"i"' alwaysStopAt="true"/>
+    <variable name="N" expression="" defaultValue="" alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="genfor" value="for (genvar $I$ = 0; $I$ &lt; $N$; $I$++) begin : $LABEL$&#10;    $END$&#10;end" description="generate for loop" toReformat="false" toShortenFQNames="false">
+    <variable name="I" expression="" defaultValue='"i"' alwaysStopAt="true"/>
+    <variable name="N" expression="" defaultValue="" alwaysStopAt="true"/>
+    <variable name="LABEL" expression="" defaultValue='"gen"' alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="module" value="module $NAME$ (&#10;    $END$&#10;);&#10;&#10;endmodule" description="module skeleton" toReformat="false" toShortenFQNames="false">
+    <variable name="NAME" expression="fileNameWithoutExtension()" defaultValue='"name"' alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="function" value="function automatic $TYPE$ $NAME$($ARGS$);&#10;    $END$&#10;endfunction" description="function" toReformat="false" toShortenFQNames="false">
+    <variable name="TYPE" expression="" defaultValue='"void"' alwaysStopAt="true"/>
+    <variable name="NAME" expression="" defaultValue='"name"' alwaysStopAt="true"/>
+    <variable name="ARGS" expression="" defaultValue="" alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="task" value="task automatic $NAME$($ARGS$);&#10;    $END$&#10;endtask" description="task" toReformat="false" toShortenFQNames="false">
+    <variable name="NAME" expression="" defaultValue='"name"' alwaysStopAt="true"/>
+    <variable name="ARGS" expression="" defaultValue="" alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="enum" value="typedef enum logic [$MSB$:0] {&#10;    $END$&#10;} $NAME$;" description="typedef enum" toReformat="false" toShortenFQNames="false">
+    <variable name="MSB" expression="" defaultValue='"1"' alwaysStopAt="true"/>
+    <variable name="NAME" expression="" defaultValue='"name_e"' alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+  <template name="struct" value="typedef struct packed {&#10;    $END$&#10;} $NAME$;" description="typedef struct packed" toReformat="false" toShortenFQNames="false">
+    <variable name="NAME" expression="" defaultValue='"name_t"' alwaysStopAt="true"/>
+    <context>
+      <option name="VERILOG" value="true"/>
+    </context>
+  </template>
+</templateSet>
