@@ -12,6 +12,11 @@
     <!-- Platform module for the base APIs; LSP module for the Verible and slang language servers. -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lsp</depends>
+    <!-- The test runner that shows testbench runs; its classes are in modules of the bundled Test Runner plugin. -->
+    <dependencies>
+        <module name="intellij.platform.smRunner"/>
+        <module name="intellij.platform.testRunner"/>
+    </dependencies>
 
     <extensions defaultExtensionNs="com.intellij">
         <errorHandler implementation="com.intellij.diagnostic.JetBrainsMarketplaceErrorReportSubmitter"/>
@@ -34,6 +39,19 @@
                            implementationClass="com.jotrorox.verilogtoolbox.VerilogBraceMatcher"/>
         <lang.quoteHandler language="Verilog"
                            implementationClass="com.jotrorox.verilogtoolbox.VerilogQuoteHandler"/>
+        <lang.foldingBuilder language="Verilog"
+                             implementationClass="com.jotrorox.verilogtoolbox.VerilogFoldingBuilder"/>
+        <!-- No lang.psiStructureViewFactory on purpose: without one the platform falls back to its
+             LSP structure view, which shows slang-server's document symbols. -->
+        <defaultLiveTemplates file="/liveTemplates/Verilog.xml"/>
+        <liveTemplateContext contextId="VERILOG"
+                             implementation="com.jotrorox.verilogtoolbox.VerilogTemplateContextType"/>
+        <internalFileTemplate name="SystemVerilog Module"/>
+        <internalFileTemplate name="Verilog Module"/>
+        <internalFileTemplate name="SystemVerilog Package"/>
+        <internalFileTemplate name="SystemVerilog Interface"/>
+        <internalFileTemplate name="SystemVerilog Header"/>
+        <internalFileTemplate name="Verilog Header"/>
 
         <!-- slang-server: the default language server, downloaded when it is missing. -->
         <platform.lsp.integrationProvider
@@ -57,11 +75,18 @@
     </extensions>
 
     <actions>
-        <!-- The design slang-server elaborates: a top-level file or a build (.f) file. -->
+        <action id="VerilogToolbox.NewFile"
+                class="com.jotrorox.verilogtoolbox.VerilogCreateFileAction"
+                text="Verilog/SystemVerilog File"
+                description="Create a Verilog or SystemVerilog module, package, interface or header"
+                icon="/icons/verilog.svg">
+            <add-to-group group-id="NewGroup" anchor="before" relative-to-action="NewFile"/>
+        </action>
+        <!-- The design: a file list (.f) that slang-server and Icarus runs share, or a top-level file for slang-server. -->
         <action id="VerilogToolbox.SlangSelectDesign"
                 class="com.jotrorox.verilogtoolbox.SlangSelectDesignAction"
                 text="Set as slang-server Top Level"
-                description="Make slang-server elaborate the design below this file, or the files this build file lists">
+                description="Make this file list the design of slang-server and Icarus runs, or make slang-server elaborate the design below this file">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
@@ -69,10 +94,20 @@
         <action id="VerilogToolbox.SlangClearDesign"
                 class="com.jotrorox.verilogtoolbox.SlangClearDesignAction"
                 text="Clear slang-server Top Level"
-                description="Make slang-server check every file on its own again">
+                description="Stop using the selected design: slang-server checks every file on its own again and Icarus runs compile the testbench's directory">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <!-- A testbench skeleton for a module: signals, the instance, clock, reset and a waveform dump. -->
+        <action id="VerilogToolbox.GenerateTestbench"
+                class="com.jotrorox.verilogtoolbox.GenerateTestbenchAction"
+                text="Generate Testbench"
+                description="Create a testbench next to this module that instantiates it, drives its clock and reset, and dumps a waveform">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
     </actions>
 </idea-plugin>

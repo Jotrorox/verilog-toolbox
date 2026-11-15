@@ -10,9 +10,10 @@ import java.nio.file.Path
 
 /**
  * Links the `file:line` locations in Icarus output to the source, as in `tb.v:12: syntax error` from
- * iverilog and `ERROR: tb.v:20: ...` or `tb.v:31: $finish called` from vvp.
+ * iverilog and `ERROR: tb.v:20: ...` or `tb.v:31: $finish called` from vvp. Relative paths start at one
+ * of [workingDirectories], which are asked for each line: a run of several testbenches finds them late.
  */
-class IcarusConsoleFilter(private val project: Project, private val workingDirectory: Path) : Filter {
+class IcarusConsoleFilter(private val project: Project, private val workingDirectories: () -> Collection<Path>) : Filter {
     override fun applyFilter(line: String, entireLength: Int): Filter.Result? {
         val lineStart = entireLength - line.length
         val items = locations(line, ::resolve).mapNotNull { location ->
@@ -26,10 +27,12 @@ class IcarusConsoleFilter(private val project: Project, private val workingDirec
     }
 
     private fun resolve(path: String): Path? =
-        try {
-            workingDirectory.resolve(path).normalize().takeIf { Files.isRegularFile(it) }
-        } catch (_: InvalidPathException) {
-            null
+        workingDirectories().firstNotNullOfOrNull { directory ->
+            try {
+                directory.resolve(path).normalize().takeIf { Files.isRegularFile(it) }
+            } catch (_: InvalidPathException) {
+                null
+            }
         }
 
     /** A `file:line` reference covering [start] until [end] of a console line; [line] is one-based. */

@@ -1,0 +1,4 @@
+`ifndef ${NAME.toUpperCase()}_VH
+`define ${NAME.toUpperCase()}_VH
+
+`endif
