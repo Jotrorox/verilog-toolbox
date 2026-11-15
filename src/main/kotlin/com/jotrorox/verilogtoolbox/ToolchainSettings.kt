@@ -1,13 +1,13 @@
 package com.jotrorox.verilogtoolbox
 
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.openapi.components.SerializablePersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.util.EnvironmentUtil
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -119,7 +119,7 @@ class ToolchainSettings :
             ?.takeIf { Files.isExecutable(it) && !Files.isDirectory(it) }
 
     private fun findOnPath(binary: String): Path? =
-        PathEnvironmentVariableUtil.findInPath(binary)?.toPath()
+        findExecutableOnPath(binary)
             // An IDE started from the Dock does not always inherit the shell's PATH.
             ?: HOMEBREW_DIRECTORIES.takeIf { SystemInfo.isMac }
                 ?.firstNotNullOfOrNull { executable("$it/$binary") }
@@ -147,3 +147,10 @@ class ToolchainSettings :
         }
     }
 }
+
+/** The first executable called [binary] in the directories of `PATH`, as the IDE's processes see it. */
+internal fun findExecutableOnPath(binary: String, path: String? = EnvironmentUtil.getValue("PATH")): Path? =
+    path.orEmpty().split(File.pathSeparatorChar).asSequence()
+        .filter { it.isNotBlank() }
+        .mapNotNull { directory -> runCatching { Path.of(directory, binary) }.getOrNull() }
+        .firstOrNull { Files.isRegularFile(it) && Files.isExecutable(it) }

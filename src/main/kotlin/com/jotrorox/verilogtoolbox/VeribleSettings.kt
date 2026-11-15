@@ -1,6 +1,5 @@
 package com.jotrorox.verilogtoolbox
 
-import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.openapi.components.SerializablePersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
@@ -30,7 +29,7 @@ class VeribleSettings :
         if (configured.isNotEmpty()) {
             return runCatching { Path.of(configured) }.getOrNull()?.takeIf { Files.isExecutable(it) }
         }
-        return PathEnvironmentVariableUtil.findInPath(LANGUAGE_SERVER_BINARY)?.toPath()
+        return findExecutableOnPath(LANGUAGE_SERVER_BINARY)
     }
 
     companion object {
