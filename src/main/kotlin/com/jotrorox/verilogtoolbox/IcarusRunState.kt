@@ -14,9 +14,8 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.psi.search.FileTypeIndex
@@ -26,6 +25,7 @@ import java.io.IOException
 import java.io.OutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.Callable
 import kotlin.io.path.extension
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
@@ -118,11 +118,11 @@ object IcarusCommandLines {
 
     /** Every project directory with Verilog files, searched for the modules and headers the sources refer to. */
     private fun libraryDirectories(project: Project): List<Path> =
-        DumbService.getInstance(project).runReadActionInSmartMode(Computable {
+        ReadAction.nonBlocking(Callable {
             FileTypeIndex.getFiles(VerilogFileType, GlobalSearchScope.projectScope(project))
                 .mapNotNull { it.parent?.takeIf { parent -> parent.isInLocalFileSystem }?.toNioPath() }
                 .distinct().sorted()
-        })
+        }).inSmartMode(project).executeSynchronously()
 }
 
 /**

@@ -72,7 +72,7 @@ private class VeribleLspClientDescriptor(project: Project, private val executabl
 
     // With slang-server running, leave what both servers can do to it instead of answering twice.
     override val lspCustomization: LspCustomization =
-        if (ToolchainSettings.getInstance().findSlangServer() == null) LspCustomization()
+        if (ToolchainSettings.getInstance().findSlangServer() == null) object : LspCustomization() {}
         else object : LspCustomization() {
             override val goToDefinitionCustomizer = LspGoToDefinitionDisabled
             override val goToTypeDefinitionCustomizer = LspGoToTypeDefinitionDisabled
