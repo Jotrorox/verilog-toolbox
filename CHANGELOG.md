@@ -2,9 +2,16 @@
 
 # Verilog-toolbox Changelog
 
-## Unreleased
+## [Unreleased]
 
-## 0.2.0 - 2026-11-15
+## [0.2.1] - 2026-11-16
+
+### Fixed
+
+- Binary incompatibility with CLion 2026.3 (`NoSuchMethodError` on `Diagnostic.getMessage()` when Verible runs
+  next to slang-server)
+
+## [0.2.0] - 2026-11-15
 
 ### Added
 
