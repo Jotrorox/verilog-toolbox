@@ -91,7 +91,9 @@ private class VeribleLspClientDescriptor(project: Project, private val executabl
                     textRange: TextRange,
                     quickFixes: List<IntentionAction>,
                 ) {
-                    if (isVeribleSyntaxError(diagnostic.message)) return
+                    // Not diagnostic.message: lsp4j changed that getter's return type in 2026.3, so it
+                    // only links against one platform version. The platform's own accessor works on all.
+                    if (isVeribleSyntaxError(getMessage(diagnostic))) return
                     super.createAnnotation(holder, diagnostic, textRange, quickFixes)
                 }
             }
