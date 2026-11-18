@@ -16,20 +16,20 @@ class VeribleSettings :
 
     data class State(@JvmField val languageServerPath: String = "")
 
-    /** Path to `verible-verilog-ls`; empty means "look it up on PATH". */
+    /** Path to `verible-verilog-ls`; empty means "look it up on PATH, or where Homebrew puts it". */
     var languageServerPath: String
         get() = state.languageServerPath
         set(value) {
             updateState { it.copy(languageServerPath = value.trim()) }
         }
 
-    /** The optional Verible language server: the configured path if valid, otherwise the one on PATH. */
+    /** The optional Verible language server: the configured path if valid, otherwise the installed one. */
     fun findLanguageServer(): Path? {
         val configured = languageServerPath
         if (configured.isNotEmpty()) {
             return runCatching { Path.of(configured) }.getOrNull()?.takeIf { Files.isExecutable(it) }
         }
-        return findExecutableOnPath(LANGUAGE_SERVER_BINARY)
+        return findInstalledExecutable(LANGUAGE_SERVER_BINARY)
     }
 
     companion object {

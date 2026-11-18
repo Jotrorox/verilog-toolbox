@@ -173,17 +173,12 @@ class ToolchainSettings :
         path.takeIf { it.isNotEmpty() }?.let { runCatching { Path.of(it) }.getOrNull() }
             ?.takeIf { Files.isExecutable(it) && !Files.isDirectory(it) }
 
-    private fun findOnPath(binary: String): Path? =
-        findExecutableOnPath(binary)
-            // An IDE started from the Dock does not always inherit the shell's PATH.
-            ?: HOMEBREW_DIRECTORIES.takeIf { SystemInfo.isMac }
-                ?.firstNotNullOfOrNull { executable("$it/$binary") }
+    private fun findOnPath(binary: String): Path? = findInstalledExecutable(binary)
 
     companion object {
         val SLANG_SERVER_BINARY: String = if (SystemInfo.isWindows) "slang-server.exe" else "slang-server"
         val IVERILOG_BINARY: String = if (SystemInfo.isWindows) "iverilog.exe" else "iverilog"
         val VVP_BINARY: String = if (SystemInfo.isWindows) "vvp.exe" else "vvp"
-        private val HOMEBREW_DIRECTORIES = listOf("/opt/homebrew/bin", "/usr/local/bin")
 
         private fun binary(name: String): String = if (SystemInfo.isWindows) "$name.exe" else name
 
@@ -220,3 +215,16 @@ internal fun findExecutableOnPath(binary: String, path: String? = EnvironmentUti
         .filter { it.isNotBlank() }
         .mapNotNull { directory -> runCatching { Path.of(directory, binary) }.getOrNull() }
         .firstOrNull { Files.isRegularFile(it) && Files.isExecutable(it) }
+
+/** Where Homebrew links its binaries: `/opt/homebrew` on Apple silicon, `/usr/local` on Intel Macs. */
+private val HOMEBREW_DIRECTORIES = listOf("/opt/homebrew/bin", "/usr/local/bin")
+
+/**
+ * The executable called [binary] on `PATH`, or else in Homebrew's directories on macOS: an IDE started from
+ * the Dock does not always inherit the shell's PATH.
+ */
+internal fun findInstalledExecutable(binary: String): Path? =
+    findExecutableOnPath(binary)
+        ?: HOMEBREW_DIRECTORIES.takeIf { SystemInfo.isMac }
+            ?.mapNotNull { runCatching { Path.of(it, binary) }.getOrNull() }
+            ?.firstOrNull { Files.isRegularFile(it) && Files.isExecutable(it) }

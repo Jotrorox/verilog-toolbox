@@ -5,9 +5,20 @@
     <vendor>Jotrorox</vendor>
 
     <description><![CDATA[
-        Verilog and SystemVerilog support for CLion: code insight from the slang-server language server,
-        which is downloaded automatically, Verilator lint, Icarus Verilog simulation, Yosys synthesis checks
-        and GTKWave integration, with the tools downloadable as the OSS CAD Suite.
+        <p>Verilog and SystemVerilog support for CLion: slang-server code insight, Verilator lint, Icarus Verilog
+        testbenches in the test runner, a testbench generator, Yosys synthesis checks and GTKWave or Surfer
+        waveforms, with the tools downloadable as the OSS CAD Suite.</p>
+        <ul>
+            <li>Diagnostics, navigation, hover, completion, rename and inlay hints from the slang-server language
+                server, downloaded automatically; Verible optional for formatting and style lint</li>
+            <li>Verilator lint as you type: width mismatches, incomplete cases, inferred latches, multiple drivers</li>
+            <li>Run testbenches with Icarus Verilog from the gutter, or every testbench of a folder at once, with
+                a pass/fail tree in the test runner</li>
+            <li>Generate Testbench for a module: instance, clock, reset and waveform dump already written</li>
+            <li>Check Synthesis with Yosys, for generic gates or iCE40, ECP5, Gowin and Xilinx 7-series</li>
+            <li>Open waveforms in GTKWave or Surfer, reloaded after every re-run, and add the signal at the caret</li>
+            <li>One <code>.f</code> file list defines the design for slang-server and the simulator</li>
+        </ul>
         ]]></description>
 
     <!-- Platform module for the base APIs; LSP module for the Verible and slang language servers. -->

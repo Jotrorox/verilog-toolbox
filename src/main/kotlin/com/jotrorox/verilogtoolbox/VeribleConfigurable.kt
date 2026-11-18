@@ -68,13 +68,33 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                     .align(AlignX.FILL)
                     .comment(
                         "Adds formatting and style lint, which slang-server does not have. " +
-                            "Leave empty to use the verible-verilog-ls found on your PATH."
+                            "Leave empty to use the verible-verilog-ls found on your PATH" +
+                            (if (SystemInfo.isMac) " or in Homebrew's directories." else ".")
                     )
                     .component
             }
-            row {
-                button("Download Verible") { download() }
-                comment("Fetches the latest prebuilt release from github.com/chipsalliance/verible.")
+            if (VeribleDownloader.isAvailable) {
+                row {
+                    button("Download Verible") { download() }
+                    comment("Fetches the latest prebuilt release from github.com/chipsalliance/verible.")
+                }
+            } else if (VeribleDownloader.useHomebrew) {
+                row {
+                    comment(
+                        "Verible publishes no prebuilt binary for Intel Macs. Install it with " +
+                            "<a href=\"https://github.com/chipsalliance/homebrew-verible\">Homebrew</a>, " +
+                            "and it is found without setting the path:<br>" +
+                            "<code>${VeribleDownloader.HOMEBREW_INSTALL}</code>"
+                    )
+                }
+            } else {
+                row {
+                    comment(
+                        "Verible publishes no prebuilt binary for this system. Build it from " +
+                            "<a href=\"https://github.com/chipsalliance/verible\">github.com/chipsalliance/verible</a> " +
+                            "and set the path above."
+                    )
+                }
             }
         }
         group("OSS CAD Suite") {

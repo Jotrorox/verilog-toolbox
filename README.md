@@ -22,7 +22,8 @@ Verilog and SystemVerilog support for CLion.
   in it
 
 Tool paths live in **Settings → Tools → Verilog Toolbox**. Verible and the OSS CAD Suite can be downloaded
-from there if they're not installed.
+from there if they're not installed. Verible has no prebuilt binary for Intel Macs; install it with
+`brew tap chipsalliance/verible && brew install verible` and it is found without setting a path.
 
 ### OSS CAD Suite
 
@@ -111,8 +112,6 @@ with all of them at the top. The action has no shortcut of its own; give it one 
 ./gradlew runIde   # start CLion with the plugin
 ./gradlew check    # run tests
 ```
-
-Try it out on the sample project in [`examples/demo`](examples/demo).
 
 ## License
 

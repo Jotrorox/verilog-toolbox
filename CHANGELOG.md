@@ -21,6 +21,12 @@
   come with it. Tools whose path is not set are taken from it, and an update removes the build it replaces as
   well as the Icarus-only copy earlier versions downloaded
 
+### Fixed
+
+- Verible on Intel Macs, which has no prebuilt download: the settings show the Homebrew commands instead of a
+  download button that fails, and a Verible installed with Homebrew is found even when CLion was started from
+  the Dock without the shell's PATH
+
 ## [0.2.1] - 2026-11-16
 
 ### Fixed
