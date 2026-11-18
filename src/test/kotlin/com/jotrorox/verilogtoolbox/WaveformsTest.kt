@@ -114,6 +114,21 @@ class WaveformsTest {
     }
 
     @Test
+    fun surferIsToldToAddSignals() {
+        SurferControl().use { control ->
+            Socket(InetAddress.getLoopbackAddress(), control.port).use { surfer ->
+                surfer.soTimeout = 10_000
+                message(surfer.getInputStream())
+                assertTrue(control.addSignals(listOf("tb.dut.count", "tb.\\odd\"name ")))
+                assertEquals(
+                    """{"type":"command","command":"add_variables","variables":["tb.dut.count","tb.\\odd\"name "]}""",
+                    message(surfer.getInputStream()),
+                )
+            }
+        }
+    }
+
+    @Test
     fun surferThatDoesNotConnectIsNotReloaded() {
         SurferControl().use { assertFalse(it.reload(raise = true)) }
     }
@@ -127,10 +142,12 @@ class WaveformsTest {
             val script = directory.resolve("reload.tcl")
             assertEquals(listOf("--repscript", script.toString(), "--repperiod", "250"), control.arguments)
             assertEquals(
-                "# Written by Verilog Toolbox: reloads the dump when the IDE asks for it.\n" +
-                    "if {[file exists \"$raise\"]} { file delete \"$raise\"; gtkwave::presentWindow }\n" +
-                    "if {[file exists \"$reload\"]} { file delete \"$reload\"; gtkwave::reLoadFile }\n",
-                Files.readString(script),
+                listOf(
+                    "# Written by Verilog Toolbox: reloads the dump and adds signals when the IDE asks for it.",
+                    "if {[file exists \"$raise\"]} { file delete \"$raise\"; gtkwave::presentWindow }",
+                    "if {[file exists \"$reload\"]} { file delete \"$reload\"; gtkwave::reLoadFile }",
+                ),
+                Files.readAllLines(script).take(3),
             )
             // What the script does in GTKWave.
             val gtkwave = thread {
@@ -143,6 +160,58 @@ class WaveformsTest {
             gtkwave.join()
         }
         assertFalse(Files.exists(directory))
+    }
+
+    @Test
+    fun gtkwaveGetsTheSignalsToAddInAFile() {
+        val directory = folder.newFolder("control").toPath()
+        val add = directory.resolve("add")
+        GtkwaveControl(directory).use { control ->
+            var requested: String? = null
+            val gtkwave = thread {
+                while (!Files.exists(add)) Thread.sleep(10)
+                requested = Files.readString(add)
+                Files.delete(add)
+            }
+            assertTrue(control.addSignals(listOf("tb.dut.count", "tb.clk")))
+            gtkwave.join()
+            assertEquals("tb.dut.count\ntb.clk\n", requested)
+        }
+    }
+
+    /**
+     * Runs the script in tclsh, with GTKWave's commands stubbed, so only when VERILOG_TOOLBOX_TCLSH
+     * names a tclsh: it has to add vectors, whose facilities carry their range, by their plain name.
+     */
+    @Test
+    fun gtkwaveScriptAddsSignalsByTheirNameWithoutRange() {
+        val tclsh = System.getenv("VERILOG_TOOLBOX_TCLSH")
+        assumeTrue(tclsh != null)
+        val directory = folder.newFolder("control").toPath()
+        GtkwaveControl(directory).use { control ->
+            val add = directory.resolve("add")
+            Files.writeString(add, "tb.dut.count\ntb.clk\n")
+            val stubs = directory.resolve("stubs.tcl")
+            Files.writeString(
+                stubs,
+                """
+                namespace eval gtkwave {
+                    variable facs {tb.clk tb.dut.count[3:0] tb.dut.counter tb.dut.mem[1] tb.other.count[3:0]}
+                    proc getNumFacs {} { variable facs; return [llength ${'$'}facs] }
+                    proc getFacName {i} { variable facs; return [lindex ${'$'}facs ${'$'}i] }
+                    proc addSignalsFromList {list} { puts "added ${'$'}list"; return [llength ${'$'}list] }
+                    proc reLoadFile {} { puts reloaded }
+                    proc presentWindow {} {}
+                }
+                source {${control.arguments[1]}}
+                """.trimIndent(),
+            )
+            val process = ProcessBuilder(tclsh, stubs.toString()).redirectErrorStream(true).start()
+            val output = process.inputStream.bufferedReader().readText()
+            assertEquals(output, 0, process.waitFor())
+            assertEquals("added tb.clk {tb.dut.count[3:0]}\n", output)
+            assertFalse(Files.exists(add))
+        }
     }
 
     @Test

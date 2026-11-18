@@ -6,6 +6,8 @@
 
 ### Added
 
+- "Add to Waveform" in the editor: the signal at the caret is added to the GTKWave or Surfer that Open Waveform
+  started, under its hierarchical name in the simulation, with a choice when its module has several instances
 - Verilator lint as a second source of diagnostics next to slang-server, run on the open file as it is edited,
   in the design file list when one is selected, with extra options and an off switch in the settings
 - "Check Synthesis" on a module: Yosys synthesizes it, for generic gates or for iCE40, ECP5, Gowin or Xilinx

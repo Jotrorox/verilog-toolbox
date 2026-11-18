@@ -31,6 +31,7 @@ import java.net.Socket
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -181,6 +182,10 @@ object Waveforms {
     private fun openViewer(dump: Path): OpenViewer? =
         synchronized(running) { running[dump]?.takeUnless { it.handler.isProcessTerminated } }
 
+    /** The viewers started here that are still open, the most recently started first. */
+    internal fun openViewers(): List<OpenViewer> =
+        synchronized(running) { running.values.filter { !it.handler.isProcessTerminated }.sortedByDescending { it.started } }
+
     private fun stop(open: OpenViewer) {
         open.stopped = true
         synchronized(running) { running.remove(open.dump, open) }
@@ -292,14 +297,14 @@ object Waveforms {
 }
 
 /** A viewer started by [Waveforms] and the dump it shows. */
-private class OpenViewer(
+internal class OpenViewer(
     val viewer: WaveformViewer,
     val dump: Path,
     val configuration: IcarusRunConfiguration,
     val handler: ProcessHandler,
     private val control: ViewerControl?,
 ) {
-    private val started = System.nanoTime()
+    val started = System.nanoTime()
 
     /** Set before the viewer is stopped on purpose, which is no failure to report. */
     @Volatile
@@ -310,6 +315,13 @@ private class OpenViewer(
 
     /** Whether the viewer was told to load the dump again, see [ViewerControl.reload]. */
     fun reload(raise: Boolean): Boolean = !handler.isProcessTerminated && control?.reload(raise) == true
+
+    /** False for a viewer that cannot be told anything, such as a Surfer older than 0.4. */
+    val takesCommands: Boolean
+        get() = control != null
+
+    /** Whether the viewer was told to show [signals], see [ViewerControl.addSignals]. */
+    fun addSignals(signals: List<String>): Boolean = !handler.isProcessTerminated && control?.addSignals(signals) == true
 
     private companion object {
         const val STARTING_SECONDS = 10L
@@ -325,6 +337,12 @@ internal interface ViewerControl : Closeable {
 
     /** Asks for the dump to be loaded again, and with [raise] for the window to come to the front if the viewer can do that. False if the viewer is known not to have got the request. */
     fun reload(raise: Boolean): Boolean
+
+    /**
+     * Asks for [signals], hierarchical names such as `tb.dut.count`, to be added to the waveform. False
+     * if the viewer is known not to have got the request.
+     */
+    fun addSignals(signals: List<String>): Boolean
 }
 
 /**
@@ -375,11 +393,16 @@ internal class SurferControl : ViewerControl {
     }
 
     /** Surfer cannot be asked to raise its window. */
-    override fun reload(raise: Boolean): Boolean {
+    override fun reload(raise: Boolean): Boolean = command(RELOAD)
+
+    override fun addSignals(signals: List<String>): Boolean =
+        command(signals.joinToString(",", """{"type":"command","command":"add_variables","variables":[""", "]}") { jsonString(it) })
+
+    private fun command(message: String): Boolean {
         // Surfer connects once it has loaded the dump.
         if (!connected.await(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) return false
         return try {
-            send(connection ?: return false, RELOAD)
+            send(connection ?: return false, message)
             true
         } catch (_: IOException) {
             false
@@ -402,27 +425,41 @@ internal class SurferControl : ViewerControl {
         }
     }
 
-    private companion object {
+    internal companion object {
         const val GREETING = """{"type":"greeting","version":"0","commands":[]}"""
         const val RELOAD = """{"type":"command","command":"reload"}"""
         const val CONNECT_TIMEOUT_SECONDS = 3L
+
+        internal fun jsonString(value: String): String = buildString {
+            append('"')
+            for (c in value) {
+                when {
+                    c == '"' || c == '\\' -> append('\\').append(c)
+                    c < ' ' -> append("\\u%04x".format(c.code))
+                    else -> append(c)
+                }
+            }
+            append('"')
+        }
     }
 }
 
 /**
  * GTKWave takes no commands from outside, but runs a Tcl script every few hundred milliseconds when
  * started with `--repscript`. The script reloads the dump when it finds a file that [reload] creates,
- * and deletes that file, which tells that the request was seen: a GTKWave built without Tcl ignores the
- * script. Written from GTKWave's documentation and source; not tried with a GTKWave.
+ * and adds the signals listed in a file that [addSignals] creates. It deletes the file, which tells that
+ * the request was seen: a GTKWave built without Tcl ignores the script. Written from GTKWave's
+ * documentation and source; not tried with a GTKWave.
  */
 internal class GtkwaveControl(private val directory: Path = FileUtil.createTempDirectory("gtkwave", null, true).toPath()) :
     ViewerControl {
     private val reloadRequest = directory.resolve("reload")
     private val raiseRequest = directory.resolve("raise")
+    private val addRequest = directory.resolve("add")
     private val script = directory.resolve("reload.tcl")
 
     init {
-        Files.writeString(script, script(reloadRequest, raiseRequest))
+        Files.writeString(script, script(reloadRequest, raiseRequest, addRequest))
     }
 
     override val arguments: List<String>
@@ -435,8 +472,26 @@ internal class GtkwaveControl(private val directory: Path = FileUtil.createTempD
         } catch (_: IOException) {
             return false
         }
+        return seen(reloadRequest)
+    }
+
+    @Synchronized
+    override fun addSignals(signals: List<String>): Boolean {
+        try {
+            // Moved into place whole, so that the script never reads half a list.
+            val partial = directory.resolve("add.partial")
+            Files.writeString(partial, signals.joinToString("\n", postfix = "\n"))
+            Files.move(partial, addRequest, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        } catch (_: IOException) {
+            return false
+        }
+        return seen(addRequest)
+    }
+
+    /** Waits for the script to delete [request]. */
+    private fun seen(request: Path): Boolean {
         val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(SEEN_TIMEOUT_MILLIS)
-        while (Files.exists(reloadRequest)) {
+        while (Files.exists(request)) {
             if (System.nanoTime() > deadline) return false
             Thread.sleep(PERIOD_MILLIS / 2)
         }
@@ -451,12 +506,27 @@ internal class GtkwaveControl(private val directory: Path = FileUtil.createTempD
         const val PERIOD_MILLIS = 250L
         const val SEEN_TIMEOUT_MILLIS = 3_000L
 
-        internal fun script(reloadRequest: Path, raiseRequest: Path): String =
-            listOf(
-                "# Written by Verilog Toolbox: reloads the dump when the IDE asks for it.",
+        internal fun script(reloadRequest: Path, raiseRequest: Path, addRequest: Path): String {
+            val add = tclString(addRequest)
+            return listOf(
+                "# Written by Verilog Toolbox: reloads the dump and adds signals when the IDE asks for it.",
                 "if {[file exists ${tclString(raiseRequest)}]} { file delete ${tclString(raiseRequest)}; gtkwave::presentWindow }",
                 "if {[file exists ${tclString(reloadRequest)}]} { file delete ${tclString(reloadRequest)}; gtkwave::reLoadFile }",
+                // The facilities of a vector are named with their range, tb.dut.count[3:0], which the IDE does not know.
+                "if {[file exists $add]} {",
+                "    set vt_file [open $add r]; set vt_names [split [string trim [read \$vt_file]] \"\\n\"]; close \$vt_file",
+                "    file delete $add",
+                "    set vt_found {}",
+                "    set vt_count [gtkwave::getNumFacs]",
+                "    for {set vt_i 0} {\$vt_i < \$vt_count} {incr vt_i} {",
+                "        set vt_name [gtkwave::getFacName \$vt_i]",
+                "        regsub {\\[[^]]*\\]\$} \$vt_name {} vt_base",
+                "        if {[lsearch -exact \$vt_names \$vt_base] >= 0} { lappend vt_found \$vt_name }",
+                "    }",
+                "    if {[llength \$vt_found] > 0} { gtkwave::addSignalsFromList \$vt_found }",
+                "}",
             ).joinToString("\n", postfix = "\n")
+        }
 
         /** A path as a quoted Tcl word, in which backslashes and what starts a substitution are escaped. */
         internal fun tclString(path: Path): String =

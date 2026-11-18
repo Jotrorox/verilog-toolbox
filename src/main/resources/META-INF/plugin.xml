@@ -114,6 +114,14 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
+        <!-- Show the signal at the caret in the waveform viewer that Open Waveform started. -->
+        <action id="VerilogToolbox.AddToWaveform"
+                class="com.jotrorox.verilogtoolbox.AddToWaveformAction"
+                text="Add to Waveform"
+                description="Show the signal at the caret in the open GTKWave or Surfer, under its name in the simulation"
+                icon="/icons/waveform.svg">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
         <!-- Yosys: synthesize a module, report problems and sum up the resources it takes. -->
         <action id="VerilogToolbox.CheckSynthesis"
                 class="com.jotrorox.verilogtoolbox.CheckSynthesisAction"

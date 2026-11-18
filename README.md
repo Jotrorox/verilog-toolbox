@@ -18,7 +18,8 @@ Verilog and SystemVerilog support for CLion.
 - **Check Synthesis** of a module with [Yosys](https://yosyshq.net/yosys/): what does not synthesize, multiple
   drivers, logic loops and latches, and the resources it takes, as generic gates or for an FPGA family
 - Open waveforms in [GTKWave](https://gtkwave.sourceforge.net) or [Surfer](https://surfer-project.org);
-  the viewer reloads after every re-run
+  the viewer reloads after every re-run, and **Add to Waveform** in the editor shows the signal at the caret
+  in it
 
 Tool paths live in **Settings → Tools → Verilog Toolbox**. Verible and the OSS CAD Suite can be downloaded
 from there if they're not installed.
@@ -96,6 +97,13 @@ paths in `$readmemh` and `$fopen` start there too; set a working directory in th
 run somewhere else. Layouts are kept next to the testbench (`<module>.gtkw`, `<module>.surf.ron`) so they
 can be committed; the first Surfer layout is created with the testbench's signals. A viewer opened from
 the IDE reloads after each re-run (Surfer 0.4 or newer, GTKWave built with Tcl).
+
+**Add to Waveform** in the editor's context menu adds the signal at the caret to that viewer, under the
+name it has in the simulation: a signal of `counter` instantiated as `dut` in `counter_tb` is added as
+`counter_tb.dut.count`. The name is worked out from the instances in the project's sources and, for a VCD
+dump, checked against the scopes the dump has, which also finds instances in generate blocks. A module
+instantiated more than once, or a signal in more than one open waveform, offers a list to choose from,
+with all of them at the top. The action has no shortcut of its own; give it one in **Settings → Keymap**.
 
 ## Development
 
