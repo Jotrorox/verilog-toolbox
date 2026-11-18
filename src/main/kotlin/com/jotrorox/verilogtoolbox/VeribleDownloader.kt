@@ -17,18 +17,28 @@ object VeribleDownloader {
     private val installRoot: Path
         get() = PathManager.getSystemDir().resolve("verilog-toolbox").resolve("verible")
 
-    /** Suffix of the release asset built for this OS and CPU, or an error if Verible ships none. */
-    private fun assetSuffix(): String = when {
+    /** Homebrew's commands for Verible, the way to get it where no prebuilt binary is published. */
+    const val HOMEBREW_INSTALL: String = "brew tap chipsalliance/verible && brew install verible"
+
+    /**
+     * Suffix of the release asset built for this OS and CPU, or null if Verible ships none, as for Intel
+     * Macs: its macOS archive is for Apple silicon only.
+     */
+    private val assetSuffix: String? = when {
         SystemInfo.isMac && CpuArch.isArm64() -> "-macOS.tar.gz"
-        SystemInfo.isMac -> throw IOException(
-            "Verible publishes no prebuilt binary for Intel Macs. " +
-                "Install it yourself (for example with Homebrew) and set the path in the settings."
-        )
         SystemInfo.isLinux && CpuArch.isArm64() -> "-linux-static-arm64.tar.gz"
         SystemInfo.isLinux && CpuArch.isIntel64() -> "-linux-static-x86_64.tar.gz"
         SystemInfo.isWindows -> "-win64.zip"
-        else -> throw IOException("Verible publishes no prebuilt binary for ${SystemInfo.OS_NAME} ${SystemInfo.OS_ARCH}.")
+        else -> null
     }
+
+    /** Whether Verible can be downloaded for this machine. */
+    val isAvailable: Boolean
+        get() = assetSuffix != null
+
+    /** On a Mac without a download, Verible comes from Homebrew. */
+    val useHomebrew: Boolean
+        get() = SystemInfo.isMac && !isAvailable
 
     /**
      * Downloads and unpacks the latest release, returning the path of `verible-verilog-ls`.
@@ -36,11 +46,14 @@ object VeribleDownloader {
      */
     @Throws(IOException::class)
     fun downloadLatest(indicator: ProgressIndicator): Path {
+        val suffix = assetSuffix ?: throw IOException(
+            if (useHomebrew) "Verible publishes no prebuilt binary for Intel Macs. Install it with Homebrew: $HOMEBREW_INSTALL"
+            else "Verible publishes no prebuilt binary for ${SystemInfo.OS_NAME} ${SystemInfo.OS_ARCH}."
+        )
         indicator.isIndeterminate = true
         indicator.text = "Looking up the latest Verible release…"
         val release = GitHubReleases.latest("chipsalliance/verible", indicator)
         val tag = release.tag
-        val suffix = assetSuffix()
         val asset = release.assets.firstOrNull { it.name.endsWith(suffix) }
             ?: throw IOException("Verible release $tag has no '*$suffix' download.")
 
