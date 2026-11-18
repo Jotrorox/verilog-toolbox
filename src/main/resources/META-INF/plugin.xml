@@ -6,7 +6,8 @@
 
     <description><![CDATA[
         Verilog and SystemVerilog support for CLion: code insight from the slang-server language server,
-        which is downloaded automatically, plus Icarus Verilog and GTKWave integration.
+        which is downloaded automatically, Verilator lint, Icarus Verilog simulation, Yosys synthesis checks
+        and GTKWave integration, with the tools downloadable as the OSS CAD Suite.
         ]]></description>
 
     <!-- Platform module for the base APIs; LSP module for the Verible and slang language servers. -->
@@ -72,6 +73,10 @@
                 implementation="com.jotrorox.verilogtoolbox.IcarusRunConfigurationProducer"/>
         <runLineMarkerContributor language="Verilog"
                                   implementationClass="com.jotrorox.verilogtoolbox.IcarusRunLineMarkerContributor"/>
+
+        <!-- Verilator: a second source of diagnostics, linting the open file in the design. -->
+        <externalAnnotator language="Verilog"
+                           implementationClass="com.jotrorox.verilogtoolbox.VerilatorExternalAnnotator"/>
     </extensions>
 
     <actions>
@@ -108,6 +113,15 @@
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <!-- Yosys: synthesize a module, report problems and sum up the resources it takes. -->
+        <action id="VerilogToolbox.CheckSynthesis"
+                class="com.jotrorox.verilogtoolbox.CheckSynthesisAction"
+                text="Check Synthesis"
+                description="Synthesize the module with Yosys, report what does not synthesize and sum up the resources it takes">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>
 </idea-plugin>

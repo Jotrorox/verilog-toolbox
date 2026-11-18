@@ -5,8 +5,6 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
-import com.intellij.psi.search.FileTypeIndex
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.execution.ParametersListUtil
 import java.io.IOException
 import java.nio.file.Files
@@ -52,7 +50,7 @@ object IcarusCommandLines {
         val topModule = configuration.resolveTopModule()
         val design = compiledDesign(configuration)
 
-        val compile = ToolchainSettings.icarusCommandLine(iverilog).withWorkingDirectory(workingDirectory)
+        val compile = ToolchainSettings.toolCommandLine(iverilog).withWorkingDirectory(workingDirectory)
         compile.addParameters(ParametersListUtil.parse(settings.compilerOptions.orEmpty()))
         compile.addParameters("-o", design.toString())
         val fileList = configuration.fileList
@@ -69,7 +67,7 @@ object IcarusCommandLines {
         }
 
         // vvp cannot be told where a relative $dumpfile goes, so it runs where the dump belongs.
-        val simulate = ToolchainSettings.icarusCommandLine(vvp).withWorkingDirectory(simulationDirectory)
+        val simulate = ToolchainSettings.toolCommandLine(vvp).withWorkingDirectory(simulationDirectory)
         simulate.addParameters(ParametersListUtil.parse(settings.simulatorOptions.orEmpty()))
         simulate.addParameter(design.toString())
         simulate.addParameters(ParametersListUtil.parse(settings.simulationArguments.orEmpty()))
@@ -148,9 +146,5 @@ object IcarusCommandLines {
 
     /** Every project directory with Verilog files, searched for the modules and headers the sources refer to. */
     private fun libraryDirectories(project: Project): List<Path> =
-        ReadAction.nonBlocking(Callable {
-            FileTypeIndex.getFiles(VerilogFileType, GlobalSearchScope.projectScope(project))
-                .mapNotNull { it.parent?.takeIf { parent -> parent.isInLocalFileSystem }?.toNioPath() }
-                .distinct().sorted()
-        }).inSmartMode(project).executeSynchronously()
+        ReadAction.nonBlocking(Callable { VerilogDesign.libraryDirectories(project) }).inSmartMode(project).executeSynchronously()
 }

@@ -4,6 +4,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- Verilator lint as a second source of diagnostics next to slang-server, run on the open file as it is edited,
+  in the design file list when one is selected, with extra options and an off switch in the settings
+- "Check Synthesis" on a module: Yosys synthesizes it, for generic gates or for iCE40, ECP5, Gowin or Xilinx
+  7-series, and the console shows its warnings and errors, the cell statistics and a resource summary that
+  points out inferred latches. SystemVerilog is read with yosys-slang when Yosys has it
+- Settings for the paths of Verilator and Yosys, and for the synthesis target
+
+### Changed
+
+- The OSS CAD Suite download is kept whole instead of only its Icarus Verilog, so Verilator, Yosys and GTKWave
+  come with it. Tools whose path is not set are taken from it, and an update removes the build it replaces as
+  well as the Icarus-only copy earlier versions downloaded
+
 ## [0.2.1] - 2026-11-16
 
 ### Fixed

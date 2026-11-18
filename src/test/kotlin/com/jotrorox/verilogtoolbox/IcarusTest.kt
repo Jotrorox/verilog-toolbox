@@ -1,8 +1,6 @@
 package com.jotrorox.verilogtoolbox
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -45,25 +43,6 @@ class IcarusTest {
     fun unknownFilesAndPlainNumbersAreIgnored() {
         assertEquals(emptyList<String>(), locations("other.v:12: syntax error", "tb.v"))
         assertEquals(emptyList<String>(), locations("time 10:30 value 12:5", "tb.v"))
-    }
-
-    @Test
-    fun onlyIcarusFilesAreUnpacked() {
-        val kept = listOf(
-            "oss-cad-suite/bin/iverilog", "oss-cad-suite/bin/vvp", "oss-cad-suite/bin/iverilog.exe",
-            "oss-cad-suite/bin/libvvp-1.dll", "oss-cad-suite/libexec/ivl", "oss-cad-suite/libexec/realpath",
-            "oss-cad-suite/lib/ivl/system.vpi", "oss-cad-suite/lib/ivl/include/constants.vams",
-            "oss-cad-suite/lib/libvvp.1.14.0.dylib", "oss-cad-suite/lib/libz.so.1",
-            "oss-cad-suite/lib/ld-linux-x86-64.so.2", "oss-cad-suite/lib/libstdc++-6.dll",
-            "oss-cad-suite/license/LICENSE.iverilog",
-        )
-        val dropped = listOf(
-            "oss-cad-suite/bin/yosys", "oss-cad-suite/libexec/yosys", "oss-cad-suite/lib/libLLVM.so.21.1",
-            "oss-cad-suite/lib/libghdl.a", "oss-cad-suite/lib/python3.11/os.py", "oss-cad-suite/lib/Qt6Gui.dll",
-            "oss-cad-suite/share/yosys/techlibs.v", "oss-cad-suite/license/LICENSE.yosys",
-        )
-        kept.forEach { assertTrue(it, IcarusDownloader.isIcarusFile(it)) }
-        dropped.forEach { assertFalse(it, IcarusDownloader.isIcarusFile(it)) }
     }
 
     @Test

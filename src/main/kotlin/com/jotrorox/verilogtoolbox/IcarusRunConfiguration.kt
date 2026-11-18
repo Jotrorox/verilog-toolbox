@@ -164,29 +164,29 @@ class IcarusRunConfiguration(project: Project, factory: ConfigurationFactory, na
         val toolchain = ToolchainSettings.getInstance()
         if (toolchain.findIverilog() == null || toolchain.findVvp() == null) {
             throw RuntimeConfigurationError(
-                "Icarus Verilog (iverilog and vvp) was not found. Download it, or set its path in Settings | Tools | Verilog Toolbox."
+                "Icarus Verilog (iverilog and vvp) was not found. Download the OSS CAD Suite, which has it, or set " +
+                    "its path in Settings | Tools | Verilog Toolbox."
             ).apply { setQuickFix(Runnable { downloadIcarus() }) }
         }
     }
 
     private fun downloadIcarus() {
         try {
-            val iverilog = ProgressManager.getInstance().runProcessWithProgressSynchronously(
+            ProgressManager.getInstance().runProcessWithProgressSynchronously(
                 ThrowableComputable<Path, IOException> {
-                    IcarusDownloader.downloadLatest(ProgressManager.getInstance().progressIndicator)
+                    OssCadSuite.downloadLatest(ProgressManager.getInstance().progressIndicator)
                 },
-                "Downloading Icarus Verilog", true, project,
+                "Downloading the OSS CAD Suite", true, project,
             )
-            ToolchainSettings.getInstance().iverilogPath = iverilog.toString()
         } catch (e: IOException) {
-            Messages.showErrorDialog(project, e.message ?: e.toString(), "Icarus Verilog Download Failed")
+            Messages.showErrorDialog(project, e.message ?: e.toString(), "OSS CAD Suite Download Failed")
         }
     }
 
     override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
         val toolchain = ToolchainSettings.getInstance()
         if (toolchain.findIverilog() == null || toolchain.findVvp() == null) {
-            IcarusDownloader.notifyMissing(project)
+            OssCadSuite.notifyMissing(project, "Icarus Verilog", "Simulating a testbench needs iverilog and vvp.")
             throw CantRunException.CustomProcessedCantRunException()
         }
         // The compiler reads the sources from disk.
