@@ -1,8 +1,10 @@
 package com.jotrorox.verilogtoolbox
 
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
@@ -26,6 +28,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
     private lateinit var slangField: TextFieldWithBrowseButton
     private lateinit var slangStatus: JEditorPane
     private lateinit var iverilogField: TextFieldWithBrowseButton
+    private lateinit var suiteStatus: JEditorPane
 
     override fun createPanel(): DialogPanel = panel {
         group("slang Language Server") {
@@ -74,6 +77,19 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 comment("Fetches the latest prebuilt release from github.com/chipsalliance/verible.")
             }
         }
+        group("OSS CAD Suite") {
+            row {
+                button("Download OSS CAD Suite") { downloadSuite() }
+                suiteStatus = comment(suiteStatusText()).component
+            }
+            row {
+                comment(
+                    "The nightly build from github.com/YosysHQ/oss-cad-suite-build (${OssCadSuite.DOWNLOAD_SIZE}). " +
+                        "Icarus Verilog, Verilator, Yosys and GTKWave are taken from it when their paths are " +
+                        "empty; older builds are removed after an update."
+                )
+            }
+        }
         group("Icarus Verilog") {
             row("Path to iverilog:") {
                 iverilogField = textFieldWithBrowseButton(
@@ -81,17 +97,54 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 )
                     .bindText(toolchain::iverilogPath)
                     .align(AlignX.FILL)
-                    .comment("Leave empty to use the iverilog found on your PATH. vvp is taken from the same directory.")
+                    .comment(
+                        "Leave empty to use the OSS CAD Suite's, or else the iverilog found on your PATH. " +
+                            "vvp is taken from the same directory."
+                    )
                     .component
             }
-            // Only offered while there is no usable installation.
+        }
+        group("Verilator Lint") {
             row {
-                button("Download Icarus Verilog") { downloadIcarus() }
-                comment(
-                    "Icarus Verilog was not found. It has no official binaries, so this fetches the OSS CAD Suite " +
-                        "(500–750 MB) from github.com/YosysHQ/oss-cad-suite-build and keeps only Icarus Verilog."
-                )
-            }.visible(toolchain.findIverilog() == null)
+                checkBox("Lint open files with Verilator")
+                    .bindSelected(toolchain::verilatorLintEnabled)
+                    .comment(
+                        "A second source of diagnostics next to slang-server: width mismatches, incomplete " +
+                            "cases, inferred latches and more. Files are linted in the design file list, when " +
+                            "one is selected."
+                    )
+            }
+            row("Path to verilator:") {
+                textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select verilator"))
+                    .bindText(toolchain::verilatorPath)
+                    .align(AlignX.FILL)
+                    .comment("Leave empty to use the OSS CAD Suite's, or else the verilator found on your PATH.")
+            }
+            row("Options:") {
+                textField()
+                    .bindText(toolchain::verilatorOptions)
+                    .align(AlignX.FILL)
+                    .comment(
+                        "Added to <code>--lint-only</code>, such as <code>-Wall</code> for the style warnings " +
+                            "or <code>-Wno-UNUSEDSIGNAL</code> to switch one off."
+                    )
+            }
+        }
+        group("Yosys Synthesis") {
+            row("Path to yosys:") {
+                textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select yosys"))
+                    .bindText(toolchain::yosysPath)
+                    .align(AlignX.FILL)
+                    .comment(
+                        "Leave empty to use the OSS CAD Suite's, or else the yosys found on your PATH. " +
+                            "SystemVerilog is read with the yosys-slang plugin where Yosys has it."
+                    )
+            }
+            row("Check Synthesis for:") {
+                comboBox(SynthesisTarget.entries)
+                    .bindItem(toolchain::synthesisTarget.toNullableProperty())
+                    .comment("The cells the resource summary counts: generic gates, or those of an FPGA family.")
+            }
         }
         group("Waveform Viewer") {
             row("Viewer:") {
@@ -142,17 +195,24 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
         }
     }
 
-    private fun downloadIcarus() {
+    private fun suiteStatusText(): String {
+        val version = OssCadSuite.installedVersion() ?: return "Not downloaded."
+        return "Downloaded: build $version. This fetches a newer build if there is one."
+    }
+
+    private fun downloadSuite() {
         try {
-            val executable = ProgressManager.getInstance().runProcessWithProgressSynchronously(
+            ProgressManager.getInstance().runProcessWithProgressSynchronously(
                 ThrowableComputable<Path, IOException> {
-                    IcarusDownloader.downloadLatest(ProgressManager.getInstance().progressIndicator)
+                    OssCadSuite.downloadLatest(ProgressManager.getInstance().progressIndicator)
                 },
-                "Downloading Icarus Verilog", true, null,
+                "Downloading the OSS CAD Suite", true, null,
             )
-            iverilogField.text = executable.toString()
+            // The suite's copy is what an empty path stands for; one into an older download is dropped.
+            if (OssCadSuite.isManaged(iverilogField.text.trim())) iverilogField.text = ""
+            suiteStatus.text = suiteStatusText()
         } catch (e: IOException) {
-            Messages.showErrorDialog(iverilogField, e.message ?: e.toString(), "Icarus Verilog Download Failed")
+            Messages.showErrorDialog(iverilogField, e.message ?: e.toString(), "OSS CAD Suite Download Failed")
         }
     }
 
@@ -173,5 +233,9 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
     override fun apply() {
         super.apply()
         VeribleLspIntegrationProvider.restartEverywhere()
+        // Verilator lint follows its settings in the open files.
+        for (project in ProjectManager.getInstance().openProjects) {
+            DaemonCodeAnalyzer.getInstance(project).restart("Verilog Toolbox settings changed")
+        }
     }
 }

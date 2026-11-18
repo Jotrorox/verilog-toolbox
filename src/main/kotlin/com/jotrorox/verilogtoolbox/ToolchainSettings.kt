@@ -12,7 +12,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 
-/** Settings of the slang language server, the Icarus Verilog simulator and the waveform viewers. */
+/** Settings of the slang language server, the simulation, lint and synthesis tools and the waveform viewers. */
 @Service(Service.Level.APP)
 @State(name = "VerilogToolboxToolchain", storages = [Storage("verilogToolbox.xml")])
 class ToolchainSettings :
@@ -26,6 +26,11 @@ class ToolchainSettings :
         @JvmField val waveformViewer: WaveformViewer = WaveformViewer.GTKWAVE,
         @JvmField val gtkwavePath: String = "",
         @JvmField val surferPath: String = "",
+        @JvmField val verilatorPath: String = "",
+        @JvmField val verilatorLintEnabled: Boolean = true,
+        @JvmField val verilatorOptions: String = "",
+        @JvmField val yosysPath: String = "",
+        @JvmField val synthesisTarget: SynthesisTarget = SynthesisTarget.GENERIC,
     )
 
     /** Whether slang-server, the default language server, is used at all. */
@@ -49,7 +54,7 @@ class ToolchainSettings :
             updateState { it.copy(slangServerAutoDownload = value) }
         }
 
-    /** Path to `iverilog`; empty means "look it up on PATH". */
+    /** Path to `iverilog`; empty means "use the OSS CAD Suite's, or else look it up on PATH". */
     var iverilogPath: String
         get() = state.iverilogPath
         set(value) {
@@ -77,6 +82,41 @@ class ToolchainSettings :
             updateState { it.copy(surferPath = value.trim()) }
         }
 
+    /** Path to `verilator`; empty means "use the OSS CAD Suite's, or else look it up on PATH". */
+    var verilatorPath: String
+        get() = state.verilatorPath
+        set(value) {
+            updateState { it.copy(verilatorPath = value.trim()) }
+        }
+
+    /** Whether Verilator lints the open Verilog files, next to slang-server's diagnostics. */
+    var verilatorLintEnabled: Boolean
+        get() = state.verilatorLintEnabled
+        set(value) {
+            updateState { it.copy(verilatorLintEnabled = value) }
+        }
+
+    /** Extra Verilator options for linting, such as `-Wall`. */
+    var verilatorOptions: String
+        get() = state.verilatorOptions
+        set(value) {
+            updateState { it.copy(verilatorOptions = value.trim()) }
+        }
+
+    /** Path to `yosys`; empty means "use the OSS CAD Suite's, or else look it up on PATH". */
+    var yosysPath: String
+        get() = state.yosysPath
+        set(value) {
+            updateState { it.copy(yosysPath = value.trim()) }
+        }
+
+    /** The FPGA family, or generic gates, that Check Synthesis maps the design to. */
+    var synthesisTarget: SynthesisTarget
+        get() = state.synthesisTarget
+        set(value) {
+            updateState { it.copy(synthesisTarget = value) }
+        }
+
     /**
      * The slang-server to launch: the configured path if valid, otherwise the copy the plugin downloaded,
      * otherwise the one on PATH. `null` when it is switched off or not installed.
@@ -87,9 +127,22 @@ class ToolchainSettings :
         else -> SlangServerDownloader.installed() ?: findOnPath(SLANG_SERVER_BINARY)
     }
 
-    /** The compiler to run: the configured path if valid, otherwise the one on PATH. */
-    fun findIverilog(): Path? =
-        if (iverilogPath.isNotEmpty()) executable(iverilogPath) else findOnPath(IVERILOG_BINARY)
+    /** The compiler to run: the configured path if valid, otherwise the OSS CAD Suite's, otherwise the one on PATH. */
+    fun findIverilog(): Path? = findTool(iverilogPath, "iverilog")
+
+    /**
+     * Verilator for linting. The suite's `verilator_bin` launcher is used rather than its `verilator`, a Perl
+     * script that only passes `--lint-only` on to it, so that no Perl is needed.
+     */
+    fun findVerilator(): Path? =
+        if (verilatorPath.isNotEmpty()) executable(verilatorPath)
+        else OssCadSuite.tool("verilator_bin") ?: findOnPath(binary("verilator"))
+
+    fun findYosys(): Path? = findTool(yosysPath, "yosys")
+
+    /** The [configured] path if it is valid, otherwise the suite's copy of [name], otherwise the one on PATH. */
+    private fun findTool(configured: String, name: String): Path? =
+        if (configured.isNotEmpty()) executable(configured) else OssCadSuite.tool(name) ?: findOnPath(binary(name))
 
     /** The simulation runtime, which is installed next to the compiler. */
     fun findVvp(): Path? =
@@ -106,7 +159,9 @@ class ToolchainSettings :
             WaveformViewer.SURFER -> surferPath
         }
         if (configured.isNotEmpty()) return executable(configured) ?: application(configured)
+        // A viewer the user installed comes first: the suite's GTKWave is only there because Icarus is.
         return findOnPath(viewer.binary) ?: viewer.macApplication?.let { application("/Applications/$it") }
+            ?: if (viewer == WaveformViewer.GTKWAVE) OssCadSuite.tool("gtkwave") else null
     }
 
     /** A macOS application bundle. */
@@ -130,18 +185,29 @@ class ToolchainSettings :
         val VVP_BINARY: String = if (SystemInfo.isWindows) "vvp.exe" else "vvp"
         private val HOMEBREW_DIRECTORIES = listOf("/opt/homebrew/bin", "/usr/local/bin")
 
+        private fun binary(name: String): String = if (SystemInfo.isWindows) "$name.exe" else name
+
         fun getInstance(): ToolchainSettings = service()
 
         /**
-         * A command line for an Icarus tool. The Windows build from the OSS CAD Suite keeps its DLLs in a
-         * `lib` directory next to `bin`, which has to be on PATH for the tools to start.
+         * A command line for a tool. On Linux and macOS the OSS CAD Suite's launchers set up their own
+         * environment. On Windows they are the programs themselves, so what the suite's `environment.bat`
+         * would set is set here: its `bin` and `lib` directories, which hold the DLLs, go on PATH, and
+         * Verilator is told where its standard library is.
          */
-        fun icarusCommandLine(tool: Path): GeneralCommandLine {
+        fun toolCommandLine(tool: Path): GeneralCommandLine {
             val commandLine = GeneralCommandLine(tool.toString()).withCharset(Charsets.UTF_8)
-            val libraries = tool.parent?.resolveSibling("lib")
-            if (SystemInfo.isWindows && libraries != null && Files.isDirectory(libraries.resolve("ivl"))) {
-                val path = listOfNotNull(libraries.toString(), System.getenv("PATH")).joinToString(File.pathSeparator)
+            val binaries = tool.parent ?: return commandLine
+            val root = binaries.parent ?: return commandLine
+            val libraries = root.resolve("lib")
+            if (SystemInfo.isWindows && Files.isDirectory(libraries)) {
+                val path = listOfNotNull(binaries.toString(), libraries.toString(), System.getenv("PATH"))
+                    .joinToString(File.pathSeparator)
                 commandLine.withEnvironment("PATH", path)
+                val verilatorRoot = root.resolve("share").resolve("verilator")
+                if (tool.fileName.toString().startsWith("verilator") && Files.isDirectory(verilatorRoot)) {
+                    commandLine.withEnvironment("VERILATOR_ROOT", verilatorRoot.toString())
+                }
             }
             return commandLine
         }

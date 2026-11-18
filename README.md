@@ -9,15 +9,50 @@ Verilog and SystemVerilog support for CLion.
   **New | Verilog/SystemVerilog File**
 - Diagnostics, navigation, hover, completion, rename, inlay hints, structure view and breadcrumbs via the
   [slang-server](https://github.com/hudson-trading/slang-server) language server, downloaded automatically
+- [Verilator](https://verilator.org) lint as a second source of diagnostics: width mismatches, incomplete cases,
+  inferred latches, multiple drivers and the like, as you type
 - Optional [Verible](https://github.com/chipsalliance/verible) language server for formatting and style lint
 - Run testbenches with [Icarus Verilog](https://github.com/steveicarus/iverilog) from the gutter, or all
   testbenches of a folder at once, with a pass/fail tree
 - **Generate Testbench** for a module: instance, clock, reset and waveform dump already written
+- **Check Synthesis** of a module with [Yosys](https://yosyshq.net/yosys/): what does not synthesize, multiple
+  drivers, logic loops and latches, and the resources it takes, as generic gates or for an FPGA family
 - Open waveforms in [GTKWave](https://gtkwave.sourceforge.net) or [Surfer](https://surfer-project.org);
   the viewer reloads after every re-run
 
-Tool paths live in **Settings → Tools → Verilog Toolbox**. Verible and Icarus Verilog can be downloaded
+Tool paths live in **Settings → Tools → Verilog Toolbox**. Verible and the OSS CAD Suite can be downloaded
 from there if they're not installed.
+
+### OSS CAD Suite
+
+Icarus Verilog, Verilator, Yosys and GTKWave come together in the nightly
+[OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build), which the settings, the run configuration and
+the notification about a missing tool offer to download (500–750 MB, 2–2.5 GB unpacked). The whole suite is
+kept, the FPGA tools included, and an update removes the build it replaces. A tool whose path is left empty is
+taken from the suite, or else from your `PATH`; GTKWave is the exception and comes from the suite only when
+no GTKWave of your own is installed.
+
+### Verilator lint
+
+When Verilator is found, each open `.v` and `.sv` file is linted with `verilator --lint-only` as you edit it,
+unsaved changes included, and its warnings and errors show up next to slang-server's. Files are linted in the
+design file list when one is selected, and otherwise with the project's directories searched for the modules
+they use. Extra options, such as `-Wall` for the style warnings, and a switch to turn the lint off are in the
+settings. Syntax errors are left to slang-server, which reports them more precisely.
+
+### Check Synthesis
+
+**Check Synthesis** (editor, project view or **Tools**) runs the module at the caret, or the file's module, and
+everything below it through Yosys in the Run tool window. The console shows Yosys's warnings and errors with
+links to the source, then the cell statistics and a summary such as
+`counter synthesizes for Lattice iCE40 to 11 cells: 5 LUTs, 4 flip-flops, 2 other.` Inferred latches are
+pointed out. The cells counted are generic gates, or those of iCE40, ECP5, Gowin or Xilinx 7-series, as chosen
+in the settings.
+
+The design is read from the design file list when one is selected. SystemVerilog is read with the
+[yosys-slang](https://github.com/povik/yosys-slang) front end when Yosys has it, as the OSS CAD Suite's does,
+so that Yosys sees the design as slang-server does. Runs happen in `build/synth/<module>/` of the project,
+which keeps the script, the full `yosys.log` and the statistics.
 
 ### Language server
 
