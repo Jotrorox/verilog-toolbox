@@ -1,0 +1,15 @@
+<!-- The testbench generator. Included by plugin.xml. -->
+<idea-plugin>
+    <actions>
+        <!-- A testbench skeleton for a module: signals, the instance, clock, reset and a waveform dump. -->
+        <action id="VerilogToolbox.GenerateTestbench"
+                class="com.jotrorox.verilogtoolbox.testbench.GenerateTestbenchAction"
+                text="Generate Testbench"
+                description="Create a testbench next to this module that instantiates it, drives its clock and reset, and dumps a waveform">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

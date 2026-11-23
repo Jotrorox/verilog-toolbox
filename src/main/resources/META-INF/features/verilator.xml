@@ -1,0 +1,8 @@
+<!-- Verilator lint. Included by plugin.xml. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Verilator: a second source of diagnostics, linting the open file in the design. -->
+        <externalAnnotator language="Verilog"
+                           implementationClass="com.jotrorox.verilogtoolbox.verilator.VerilatorExternalAnnotator"/>
+    </extensions>
+</idea-plugin>

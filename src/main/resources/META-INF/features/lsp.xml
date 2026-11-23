@@ -1,0 +1,33 @@
+<!-- Language servers: slang-server and Verible, and the design slang-server elaborates. Included by plugin.xml. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- slang-server: the default language server, downloaded when it is missing. -->
+        <platform.lsp.integrationProvider
+                implementation="com.jotrorox.verilogtoolbox.lsp.SlangLspIntegrationProvider"/>
+        <!-- Verible language server: optional second server for formatting and style lint. -->
+        <platform.lsp.integrationProvider
+                implementation="com.jotrorox.verilogtoolbox.lsp.VeribleLspIntegrationProvider"/>
+        <editorNotificationProvider
+                implementation="com.jotrorox.verilogtoolbox.lsp.LanguageServerNotificationProvider"/>
+    </extensions>
+
+    <actions>
+        <!-- The design: a file list (.f) that slang-server and Icarus runs share, or a top-level file for slang-server. -->
+        <action id="VerilogToolbox.SlangSelectDesign"
+                class="com.jotrorox.verilogtoolbox.lsp.SlangSelectDesignAction"
+                text="Set as slang-server Top Level"
+                description="Make this file list the design of slang-server and Icarus runs, or make slang-server elaborate the design below this file">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="VerilogToolbox.SlangClearDesign"
+                class="com.jotrorox.verilogtoolbox.lsp.SlangClearDesignAction"
+                text="Clear slang-server Top Level"
+                description="Stop using the selected design: slang-server checks every file on its own again and Icarus runs compile the testbench's directory">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

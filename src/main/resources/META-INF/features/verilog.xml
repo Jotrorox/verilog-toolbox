@@ -1,0 +1,46 @@
+<!-- Verilog and SystemVerilog editing: file type, highlighting, folding, templates. Included by plugin.xml. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType name="Verilog" language="Verilog" extensions="v;vh;sv;svh" fieldName="INSTANCE"
+                  implementationClass="com.jotrorox.verilogtoolbox.verilog.VerilogFileType"/>
+
+        <lang.parserDefinition language="Verilog"
+                               implementationClass="com.jotrorox.verilogtoolbox.verilog.VerilogParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="Verilog"
+                                       implementationClass="com.jotrorox.verilogtoolbox.verilog.VerilogSyntaxHighlighterFactory"/>
+        <annotator language="Verilog"
+                   implementationClass="com.jotrorox.verilogtoolbox.verilog.VerilogDeclarationAnnotator"/>
+        <colorSettingsPage implementation="com.jotrorox.verilogtoolbox.verilog.VerilogColorSettingsPage"/>
+        <additionalTextAttributes scheme="Default" file="colorSchemes/VerilogDefault.xml"/>
+        <additionalTextAttributes scheme="Darcula" file="colorSchemes/VerilogDarcula.xml"/>
+        <lang.commenter language="Verilog"
+                        implementationClass="com.jotrorox.verilogtoolbox.verilog.VerilogCommenter"/>
+        <lang.braceMatcher language="Verilog"
+                           implementationClass="com.jotrorox.verilogtoolbox.verilog.VerilogBraceMatcher"/>
+        <lang.quoteHandler language="Verilog"
+                           implementationClass="com.jotrorox.verilogtoolbox.verilog.VerilogQuoteHandler"/>
+        <lang.foldingBuilder language="Verilog"
+                             implementationClass="com.jotrorox.verilogtoolbox.verilog.VerilogFoldingBuilder"/>
+        <!-- No lang.psiStructureViewFactory on purpose: without one the platform falls back to its
+             LSP structure view, which shows slang-server's document symbols. -->
+        <defaultLiveTemplates file="/liveTemplates/Verilog.xml"/>
+        <liveTemplateContext contextId="VERILOG"
+                             implementation="com.jotrorox.verilogtoolbox.verilog.VerilogTemplateContextType"/>
+        <internalFileTemplate name="SystemVerilog Module"/>
+        <internalFileTemplate name="Verilog Module"/>
+        <internalFileTemplate name="SystemVerilog Package"/>
+        <internalFileTemplate name="SystemVerilog Interface"/>
+        <internalFileTemplate name="SystemVerilog Header"/>
+        <internalFileTemplate name="Verilog Header"/>
+    </extensions>
+
+    <actions>
+        <action id="VerilogToolbox.NewFile"
+                class="com.jotrorox.verilogtoolbox.verilog.VerilogCreateFileAction"
+                text="Verilog/SystemVerilog File"
+                description="Create a Verilog or SystemVerilog module, package, interface or header"
+                icon="/icons/verilog.svg">
+            <add-to-group group-id="NewGroup" anchor="before" relative-to-action="NewFile"/>
+        </action>
+    </actions>
+</idea-plugin>
