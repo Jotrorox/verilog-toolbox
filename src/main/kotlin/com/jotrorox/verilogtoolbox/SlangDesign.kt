@@ -35,7 +35,8 @@ import java.nio.file.Path
 class SlangDesign(private val project: Project) :
     SerializablePersistentStateComponent<SlangDesign.State>(State()) {
 
-    data class State(@JvmField val path: String = "", @JvmField val buildFile: Boolean = false)
+    /** Fields are `var` so that the platform saves them, see [ToolchainSettings.State]. */
+    data class State(@JvmField var path: String = "", @JvmField var buildFile: Boolean = false)
 
     /** The top-level or build file, or empty when no design is selected. */
     val path: String get() = state.path
@@ -43,10 +44,14 @@ class SlangDesign(private val project: Project) :
     /** Whether the selection is a file list rather than a top-level file. */
     val isFileList: Boolean get() = state.buildFile
 
-    /** The selected file list, or null when none is selected or it no longer exists. */
+    /**
+     * The selected file list, or null when none is selected or it no longer exists. For a design read from
+     * a Quartus settings file it is the list written from that, which may be written here.
+     */
     val fileList: Path?
         get() = state.takeIf { it.buildFile && it.path.isNotEmpty() }
             ?.let { runCatching { Path.of(it.path) }.getOrNull() }?.takeIf { Files.isRegularFile(it) }
+            ?.let { if (QuartusDesign.isSettingsFile(it.toString())) QuartusDesign.fileList(project, it) else it }
 
     fun select(file: VirtualFile) {
         updateState { State(file.path, file.isBuildFile()) }
@@ -70,13 +75,19 @@ class SlangDesign(private val project: Project) :
         val clients = LspClientManager.getInstance(project).getClients(SlangLspIntegrationProvider::class.java)
         if (clients.isEmpty()) return
         ApplicationManager.getApplication().executeOnPooledThread {
+            // The server reads a file list; of a Quartus project that is the one written from its settings.
+            val path = if (selection.buildFile && QuartusDesign.isSettingsFile(selection.path)) {
+                QuartusDesign.fileList(project, Path.of(selection.path))?.toString().orEmpty()
+            } else {
+                selection.path
+            }
             for (client in clients) {
                 try {
                     client.sendRequestSync(30_000) {
-                        it.workspaceService.executeCommand(ExecuteCommandParams(command, listOf(selection.path)))
+                        it.workspaceService.executeCommand(ExecuteCommandParams(command, listOf(path)))
                     }
                 } catch (e: Exception) {
-                    LOG.warn("slang-server did not accept $command ${selection.path}", e)
+                    LOG.warn("slang-server did not accept $command $path", e)
                 }
             }
         }
@@ -89,8 +100,10 @@ class SlangDesign(private val project: Project) :
     }
 }
 
-/** A file list for the slang driver, such as `compile.f`. */
-private fun VirtualFile.isBuildFile(): Boolean = extension?.lowercase() == "f"
+/** A file list for the slang driver, such as `compile.f`, or the Quartus settings file one is written from. */
+private fun VirtualFile.isBuildFile(): Boolean = extension?.lowercase().let { it == "f" || it == "qsf" }
+
+private fun VirtualFile.isQuartusSettings(): Boolean = extension?.lowercase() == "qsf"
 
 /**
  * The file a design can be selected from. A file list is offered even while slang-server is switched
@@ -112,7 +125,11 @@ class SlangSelectDesignAction : DumbAwareAction() {
         e.presentation.isEnabledAndVisible =
             project != null && file != null && file.path != SlangDesign.getInstance(project).path
         if (file != null) {
-            e.presentation.text = if (file.isBuildFile()) "Use as Design File List" else "Set as slang-server Top Level"
+            e.presentation.text = when {
+                file.isQuartusSettings() -> "Use Quartus Project as Design"
+                file.isBuildFile() -> "Use as Design File List"
+                else -> "Set as slang-server Top Level"
+            }
         }
     }
 
@@ -122,8 +139,12 @@ class SlangSelectDesignAction : DumbAwareAction() {
         SlangDesign.getInstance(project).select(file)
         NotificationGroupManager.getInstance().getNotificationGroup("Verilog Toolbox")
             .createNotification(
-                if (file.isBuildFile()) "slang-server and Icarus Verilog runs now use the design listed in ${file.name}."
-                else "slang-server now elaborates the design below ${file.name}.",
+                when {
+                    file.isQuartusSettings() ->
+                        "slang-server, Verilator lint, Check Synthesis and Icarus Verilog runs now use the sources of ${file.name}."
+                    file.isBuildFile() -> "slang-server and Icarus Verilog runs now use the design listed in ${file.name}."
+                    else -> "slang-server now elaborates the design below ${file.name}."
+                },
                 NotificationType.INFORMATION,
             )
             .notify(project)
@@ -138,12 +159,19 @@ class SlangClearDesignAction : DumbAwareAction() {
         val project = e.project
         e.presentation.isEnabledAndVisible = project != null && SlangDesign.getInstance(project).path.isNotEmpty()
         if (project != null) {
-            e.presentation.text =
-                if (SlangDesign.getInstance(project).isFileList) "Clear Design File List" else "Clear slang-server Top Level"
+            val design = SlangDesign.getInstance(project)
+            e.presentation.text = when {
+                QuartusDesign.isSettingsFile(design.path) -> "Stop Using Quartus Project as Design"
+                design.isFileList -> "Clear Design File List"
+                else -> "Clear slang-server Top Level"
+            }
         }
     }
 
     override fun actionPerformed(e: AnActionEvent) {
-        SlangDesign.getInstance(e.project ?: return).clear()
+        val project = e.project ?: return
+        // A Quartus project is made the design on its own, so that it is not wanted has to be remembered.
+        if (QuartusDesign.isSettingsFile(SlangDesign.getInstance(project).path)) QuartusProjectService.getInstance(project).declineDesign()
+        else SlangDesign.getInstance(project).clear()
     }
 }

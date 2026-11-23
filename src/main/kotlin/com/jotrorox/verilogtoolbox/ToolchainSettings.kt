@@ -18,19 +18,25 @@ import java.nio.file.Path
 class ToolchainSettings :
     SerializablePersistentStateComponent<ToolchainSettings.State>(State()) {
 
+    /**
+     * Replaced as a whole, never changed in place. The fields are `var` all the same: the platform leaves a
+     * final field out when it writes the state, so that with `val` nothing would be saved.
+     */
     data class State(
-        @JvmField val slangServerEnabled: Boolean = true,
-        @JvmField val slangServerPath: String = "",
-        @JvmField val slangServerAutoDownload: Boolean = true,
-        @JvmField val iverilogPath: String = "",
-        @JvmField val waveformViewer: WaveformViewer = WaveformViewer.GTKWAVE,
-        @JvmField val gtkwavePath: String = "",
-        @JvmField val surferPath: String = "",
-        @JvmField val verilatorPath: String = "",
-        @JvmField val verilatorLintEnabled: Boolean = true,
-        @JvmField val verilatorOptions: String = "",
-        @JvmField val yosysPath: String = "",
-        @JvmField val synthesisTarget: SynthesisTarget = SynthesisTarget.GENERIC,
+        @JvmField var slangServerEnabled: Boolean = true,
+        @JvmField var slangServerPath: String = "",
+        @JvmField var slangServerAutoDownload: Boolean = true,
+        @JvmField var iverilogPath: String = "",
+        @JvmField var waveformViewer: WaveformViewer = WaveformViewer.GTKWAVE,
+        @JvmField var gtkwavePath: String = "",
+        @JvmField var surferPath: String = "",
+        @JvmField var verilatorPath: String = "",
+        @JvmField var verilatorLintEnabled: Boolean = true,
+        @JvmField var verilatorOptions: String = "",
+        @JvmField var yosysPath: String = "",
+        @JvmField var synthesisTarget: SynthesisTarget = SynthesisTarget.GENERIC,
+        @JvmField var quartusPath: String = "",
+        @JvmField var quartusSimulationLibraries: Boolean = true,
     )
 
     /** Whether slang-server, the default language server, is used at all. */
@@ -115,6 +121,26 @@ class ToolchainSettings :
         get() = state.synthesisTarget
         set(value) {
             updateState { it.copy(synthesisTarget = value) }
+        }
+
+    /**
+     * Where Quartus Prime is installed: its version directory, its `quartus` directory or the directory of
+     * its tools. Empty means "where QUARTUS_ROOTDIR points, on PATH, or where it installs by default".
+     */
+    var quartusPath: String
+        get() = state.quartusPath
+        set(value) {
+            updateState { it.copy(quartusPath = value.trim()) }
+        }
+
+    /**
+     * Whether a design read from a Quartus project gets Altera's simulation models as libraries, so that
+     * the megafunctions and primitives it instantiates are known to the other tools.
+     */
+    var quartusSimulationLibraries: Boolean
+        get() = state.quartusSimulationLibraries
+        set(value) {
+            updateState { it.copy(quartusSimulationLibraries = value) }
         }
 
     /**

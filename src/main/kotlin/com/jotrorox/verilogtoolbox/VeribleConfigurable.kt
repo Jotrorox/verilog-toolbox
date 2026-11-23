@@ -10,6 +10,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.ThrowableComputable
+import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
@@ -19,6 +20,7 @@ import com.intellij.ui.dsl.builder.toNullableProperty
 import java.io.IOException
 import java.nio.file.Path
 import javax.swing.JEditorPane
+import javax.swing.event.DocumentEvent
 
 /** Settings | Tools | Verilog Toolbox. */
 class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
@@ -29,6 +31,8 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
     private lateinit var slangStatus: JEditorPane
     private lateinit var iverilogField: TextFieldWithBrowseButton
     private lateinit var suiteStatus: JEditorPane
+    private lateinit var quartusField: TextFieldWithBrowseButton
+    private lateinit var quartusStatus: JEditorPane
 
     override fun createPanel(): DialogPanel = panel {
         group("slang Language Server") {
@@ -166,6 +170,38 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                     .comment("The cells the resource summary counts: generic gates, or those of an FPGA family.")
             }
         }
+        group("Quartus Prime") {
+            row("Installation:") {
+                quartusField = textFieldWithBrowseButton(
+                    FileChooserDescriptorFactory.singleDir().withTitle("Select the Quartus Prime Installation")
+                )
+                    .bindText(toolchain::quartusPath)
+                    .align(AlignX.FILL)
+                    .comment(
+                        "The directory Quartus Prime is installed in, such as " +
+                            (if (SystemInfo.isWindows) "<code>C:\\altera_lite\\25.1std</code>" else "<code>~/altera_lite/25.1std</code>") +
+                            ". Leave empty to find it where QUARTUS_ROOTDIR points, on your PATH or where it installs by default."
+                    )
+                    .component
+            }
+            row {
+                quartusStatus = comment(quartusStatusText()).component
+                quartusField.textField.document.addDocumentListener(object : DocumentAdapter() {
+                    override fun textChanged(e: DocumentEvent) {
+                        quartusStatus.text = quartusStatusText()
+                    }
+                })
+            }
+            row {
+                checkBox("Take megafunctions and primitives from Quartus's simulation libraries")
+                    .bindSelected(toolchain::quartusSimulationLibraries)
+                    .comment(
+                        "When the design is read from a Quartus project, modules such as <code>altpll</code> and " +
+                            "<code>altsyncram</code> are known to slang-server, Verilator and Icarus Verilog from " +
+                            "the models in <code>quartus/eda/sim_lib</code>."
+                    )
+            }
+        }
         group("Waveform Viewer") {
             row("Viewer:") {
                 comboBox(WaveformViewer.entries)
@@ -191,6 +227,14 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                     .comment("Leave empty to use the surfer found on your PATH.")
             }
         }
+    }
+
+    /** Says which Quartus the path in the field, which need not be applied yet, stands for. */
+    private fun quartusStatusText(): String {
+        val path = if (::quartusField.isInitialized) quartusField.text else toolchain.quartusPath
+        val installation = Quartus.find(path)
+            ?: return if (path.isBlank()) "Quartus Prime was not found." else "There is no Quartus Prime in this directory."
+        return "Found ${installation.displayName} in ${installation.quartusDirectory?.parent ?: installation.binDirectory}."
     }
 
     private fun slangStatusText(): String {
@@ -253,8 +297,9 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
     override fun apply() {
         super.apply()
         VeribleLspIntegrationProvider.restartEverywhere()
-        // Verilator lint follows its settings in the open files.
+        // Verilator lint follows its settings in the open files, and a Quartus design its libraries.
         for (project in ProjectManager.getInstance().openProjects) {
+            QuartusProjectService.getInstance(project).changed()
             DaemonCodeAnalyzer.getInstance(project).restart("Verilog Toolbox settings changed")
         }
     }

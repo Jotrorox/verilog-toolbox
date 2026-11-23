@@ -17,6 +17,9 @@ Verilog and SystemVerilog support for CLion.
 - **Generate Testbench** for a module: instance, clock, reset and waveform dump already written
 - **Check Synthesis** of a module with [Yosys](https://yosyshq.net/yosys/): what does not synthesize, multiple
   drivers, logic loops and latches, and the resources it takes, as generic gates or for an FPGA family
+- [Quartus Prime](https://www.altera.com/products/development-tools/quartus) without its window: compile,
+  program the device, assign pins and read timing and resource reports from the IDE, with the design of the
+  `.qsf` shared with every other tool
 - Open waveforms in [GTKWave](https://gtkwave.sourceforge.net) or [Surfer](https://surfer-project.org);
   the viewer reloads after every re-run, and **Add to Waveform** in the editor shows the signal at the caret
   in it
@@ -55,6 +58,60 @@ The design is read from the design file list when one is selected. SystemVerilog
 [yosys-slang](https://github.com/povik/yosys-slang) front end when Yosys has it, as the OSS CAD Suite's does,
 so that Yosys sees the design as slang-server does. Runs happen in `build/synth/<module>/` of the project,
 which keeps the script, the full `yosys.log` and the statistics.
+
+### Quartus Prime
+
+A project with a Quartus Prime project in it (`.qpf`, or a `.qsf` alone) gets a **Quartus** tool window, and
+its Quartus project needs no setting up: it is found when the IDE project opens, and Quartus is found where
+`QUARTUS_ROOTDIR` points, on your `PATH` or where it installs by default (`C:\altera_lite`, `C:\intelFPGA_lite`,
+`~/altera_pro` and the like, the newest version). Lite, Standard and Pro editions work.
+
+![A compiled Quartus project: the overview with flow, timing and resources, and the summary in the console](docs/screenshots/quartus-compile.png)
+
+**Compiling.** The toolbar of the tool window and **Tools | Quartus Prime** run *Analysis & Elaboration* for a
+quick check, *Compile Design*, and the single steps (synthesis, Fitter, Assembler, timing analysis) for running
+one again. Each is an ordinary run configuration, so it can be run again with the run widget. The console shows
+Quartus's messages coloured by severity, links every `File: … Line: …` to the source, leaves out the legal
+notice every tool prints, and ends with a summary: resources, whether timing is met with the worst slacks and
+Fmax, the programming file, and after a failure the errors once more. Right-clicking a `.qpf` or `.qsf` offers
+**Run 'Compile …'** too.
+
+![A syntax error of Quartus in the console, linked to the source, and in the Messages tab](docs/screenshots/quartus-errors.png)
+
+**Programming.** *Program Device* and *Compile Design and Program Device* run `quartus_pgm`. The cable that is
+connected is used, and the project's device is found in a JTAG chain of several, such as behind the processor
+of an SoC board. The `.sof` configures the FPGA until it loses power; the run configuration can write the `.pof`
+to flash instead, or any other file, and has the cable, the mode, the operation letters, the device index and
+extra options for when the defaults do not fit.
+
+**Overview.** The tool window shows the device, the top-level entity, the steps of the last compilation with
+their times, timing (Fmax and the worst slack of each check, failing ones in red), the resources used and
+links to the reports, which open in the editor. It says when sources changed since the last compilation and
+when a project has no timing constraints.
+
+**Pins.** The *Pins* tab lists the ports of the top-level entity, one row per bit, with their location and I/O
+standard. Both are edited in place and written to the `.qsf` as you would write them yourself, one undoable
+step each. After a Fitter run the free pins of the device are offered and the pins the Fitter chose are
+shown. Two ports on one pin are marked.
+
+![The Pins tab next to the settings file it edits](docs/screenshots/quartus-pins.png)
+
+**Messages.** The *Messages* tab has the messages of the last run by severity, with their details below them;
+double-click goes to the source. Before a run in the IDE it shows those of the reports, whoever compiled.
+
+**The project.** **New Quartus Project…** writes a `.qpf` and `.qsf` for a device chosen from the ones your
+Quartus has installed, with the project's Verilog sources and, if you like, an `.sdc` with a clock constraint.
+**Add to / Remove from Quartus Project** and **Set as Quartus Top-Level Entity** are in the context menu of
+files, **Device…** changes the device. `.qsf`, `.qpf`, `.qip` and `.sdc` files are highlighted and complete
+commands, assignment names (all of those your Quartus knows) and common values. **Open in Quartus Prime** is
+there for what remains.
+
+**The design.** The `.qsf` describes the design to the other tools as well: slang-server, Verilator lint,
+Check Synthesis and Icarus Verilog runs read its sources, search paths, macros and top-level entity, also
+those of the `.qip` files it lists. A file list is written from it to `build/quartus/<revision>.f` and kept
+up to date. Megafunctions and primitives such as `altpll` are taken from Quartus's simulation libraries, which
+can be switched off in the settings. **Stop Using Quartus Project as Design** goes back to how it was; a `.f`
+file or a top level selected by hand is never replaced.
 
 ### Language server
 
