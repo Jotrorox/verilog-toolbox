@@ -20,7 +20,7 @@ class QuartusTest {
     private fun install(directory: String, version: String, edition: String? = "lite", vararg tools: String = arrayOf("quartus_sh", "quartus_map")): Path {
         val quartus = root.resolve(directory).resolve(version).resolve("quartus")
         val bin = Files.createDirectories(quartus.resolve("bin64"))
-        for (tool in tools) Files.writeString(bin.resolve(Quartus.binary(tool)), "")
+        for (tool in tools) Files.writeString(bin.resolve(Quartus.binary(tool)), "").toFile().setExecutable(true)
         if (edition != null) {
             Files.writeString(quartus.resolve("version.txt"), "Version=25.1.0.1129\n[ACDS]\nVersion=$version.0.1129\nEdition=$edition\n")
         }
