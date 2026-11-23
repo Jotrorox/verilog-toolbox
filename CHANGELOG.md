@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-24
+
 ### Added
 
 - openFPGALoader support: an "openFPGALoader" run configuration and "Load Bitstream into FPGA", "Write
