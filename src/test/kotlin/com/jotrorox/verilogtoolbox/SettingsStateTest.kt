@@ -13,7 +13,7 @@ class SettingsStateTest {
         val state = ToolchainSettings.State(
             slangServerEnabled = false, iverilogPath = "/opt/iverilog", waveformViewer = WaveformViewer.SURFER,
             verilatorLintEnabled = false, synthesisTarget = SynthesisTarget.ECP5, quartusPath = "/opt/quartus",
-            quartusSimulationLibraries = false,
+            quartusSimulationLibraries = false, openFpgaLoaderPath = "/opt/oss-cad-suite/bin/openFPGALoader",
         )
         assertEquals(state, restored(state))
     }

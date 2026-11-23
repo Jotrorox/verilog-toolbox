@@ -20,6 +20,8 @@ Verilog and SystemVerilog support for CLion.
 - [Quartus Prime](https://www.altera.com/products/development-tools/quartus) without its window: compile,
   program the device, assign pins and read timing and resource reports from the IDE, with the design of the
   `.qsf` shared with every other tool
+- Program the FPGA with [openFPGALoader](https://github.com/trabucayre/openFPGALoader): build the bitstream,
+  load it into SRAM or write it to flash, with the board and bitstream read from the project's Makefile
 - Open waveforms in [GTKWave](https://gtkwave.sourceforge.net) or [Surfer](https://surfer-project.org);
   the viewer reloads after every re-run, and **Add to Waveform** in the editor shows the signal at the caret
   in it
@@ -30,7 +32,7 @@ from there if they're not installed. Verible has no prebuilt binary for Intel Ma
 
 ### OSS CAD Suite
 
-Icarus Verilog, Verilator, Yosys and GTKWave come together in the nightly
+Icarus Verilog, Verilator, Yosys, GTKWave and openFPGALoader come together in the nightly
 [OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build), which the settings, the run configuration and
 the notification about a missing tool offer to download (500–750 MB, 2–2.5 GB unpacked). The whole suite is
 kept, the FPGA tools included, and an update removes the build it replaces. A tool whose path is left empty is
@@ -112,6 +114,44 @@ those of the `.qip` files it lists. A file list is written from it to `build/qua
 up to date. Megafunctions and primitives such as `altpll` are taken from Quartus's simulation libraries, which
 can be switched off in the settings. **Stop Using Quartus Project as Design** goes back to how it was; a `.f`
 file or a top level selected by hand is never replaced.
+
+### openFPGALoader
+
+[openFPGALoader](https://github.com/trabucayre/openFPGALoader) programs the FPGAs of most vendors over the
+cables of most boards: Gowin, Lattice, AMD Xilinx, Altera, Efinix, Anlogic and more. It comes with the OSS CAD
+Suite, Homebrew installs it alone (`brew install openfpgaloader`), and a path in the settings takes any other.
+
+**Programming.** **Tools | openFPGALoader | Load Bitstream into FPGA** loads the bitstream into the FPGA's SRAM,
+where it runs until the board loses power; **Write Bitstream to Flash** writes it to the flash the FPGA loads
+at power-up. A bitstream (`.bit`, `.fs`, `.bin`, `.jed`, `.rbf`, `.sof`, `.svf`, `.mcs`) has
+**Run 'Load …'** and **Write to FPGA Flash** in its context menu. Each is an ordinary run configuration of the
+type *openFPGALoader*, so it runs again from the run widget.
+
+**No setting up.** The first time, the run configuration is set up from the project. A Makefile that programs
+with openFPGALoader, such as
+
+```make
+load: $(BUILD)/$(TOP).fs
+	$(LOADER) -b $(BOARD) $<
+```
+
+gives the board, the cable, the FPGA part and the bitstream, its variables and automatic variables expanded.
+When the Makefile has a rule for the bitstream, `make build/top.fs` is run first, so that the FPGA always
+gets the latest design. The build finds Yosys, nextpnr and the packers of the suite openFPGALoader comes from,
+also when they are not on your `PATH`. Without a Makefile the most recently built bitstream of the project is
+taken. A bitstream older than a source or constraint file is pointed out before it is programmed.
+
+**The console.** The progress bar fills up in one line, warnings are coloured, the build's `file:line`
+locations are links, and the run ends with what was programmed where. When programming fails it says what to
+do: a cable that is not found, udev rules on Linux and the WinUSB driver on Windows, a board openFPGALoader
+does not know, a bitstream built for another FPGA, write-protected flash and more.
+
+**The run configuration** has the bitstream, SRAM, flash or external flash with optional verification, the
+board (searchable among all boards openFPGALoader knows, with their cable and FPGA), the build command, and
+under *Advanced* the cable, the FPGA part and further options such as `--freq` or `--ftdi-channel`.
+**Detect** next to the board, and **Tools | openFPGALoader | Detect FPGA**, show the USB probes that are
+plugged in and the FPGA the cable reaches, such as `Found Gowin GW5A-25 over board tangprimer25k. Probe:
+SIPEED USB Debugger (FTDI2232, serial 2025030317).`
 
 ### Language server
 

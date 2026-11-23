@@ -7,7 +7,8 @@
     <description><![CDATA[
         <p>Verilog and SystemVerilog support for CLion: slang-server code insight, Verilator lint, Icarus Verilog
         testbenches in the test runner, a testbench generator, Yosys synthesis checks, GTKWave or Surfer
-        waveforms and Quartus Prime projects, with the open source tools downloadable as the OSS CAD Suite.</p>
+        waveforms, Quartus Prime projects and FPGA programming with openFPGALoader, with the open source tools
+        downloadable as the OSS CAD Suite.</p>
         <ul>
             <li>Diagnostics, navigation, hover, completion, rename and inlay hints from the slang-server language
                 server, downloaded automatically; Verible optional for formatting and style lint</li>
@@ -18,6 +19,9 @@
             <li>Check Synthesis with Yosys, for generic gates or iCE40, ECP5, Gowin and Xilinx 7-series</li>
             <li>Quartus Prime without its window: compile, program the device, assign pins and read the timing
                 and resource reports, with the design of the <code>.qsf</code> shared with the other tools</li>
+            <li>Program the FPGA with openFPGALoader: build the bitstream, load it into SRAM or write it to flash, with
+                the board and bitstream read from the project's Makefile, a live progress bar and advice when the
+                cable or FPGA is not found</li>
             <li>Open waveforms in GTKWave or Surfer, reloaded after every re-run, and add the signal at the caret</li>
             <li>One <code>.f</code> file list defines the design for slang-server and the simulator</li>
         </ul>
@@ -118,6 +122,11 @@
         <postStartupActivity implementation="com.jotrorox.verilogtoolbox.QuartusStartupActivity"/>
         <toolWindow id="Quartus" anchor="right" icon="/icons/quartusToolWindow.svg" canCloseContents="false"
                     factoryClass="com.jotrorox.verilogtoolbox.QuartusToolWindowFactory"/>
+
+        <!-- openFPGALoader: build a bitstream if asked to, then load it into the FPGA or write it to its flash. -->
+        <configurationType implementation="com.jotrorox.verilogtoolbox.OpenFpgaLoaderConfigurationType"/>
+        <runConfigurationProducer
+                implementation="com.jotrorox.verilogtoolbox.OpenFpgaLoaderRunConfigurationProducer"/>
 
         <!-- Verilator: a second source of diagnostics, linting the open file in the design. -->
         <externalAnnotator language="Verilog"
@@ -275,6 +284,34 @@
             <reference ref="VerilogToolbox.Quartus.OpenInQuartus"/>
             <reference ref="VerilogToolbox.Quartus.Refresh"/>
         </group>
+        <!-- openFPGALoader: program the project's bitstream, and say what is connected. -->
+        <group id="VerilogToolbox.OpenFpgaLoader" text="openFPGALoader" popup="true" icon="/icons/openFpgaLoader.svg"
+               description="Load the bitstream into the FPGA or write it to the flash with openFPGALoader">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="VerilogToolbox.OpenFpgaLoader.Load"
+                    class="com.jotrorox.verilogtoolbox.OpenFpgaLoaderLoadAction"
+                    text="Load Bitstream into FPGA"
+                    description="Build the bitstream if the run configuration says how, and load it into the FPGA's SRAM until it loses power"
+                    icon="AllIcons.Actions.Download"/>
+            <action id="VerilogToolbox.OpenFpgaLoader.Flash"
+                    class="com.jotrorox.verilogtoolbox.OpenFpgaLoaderFlashAction"
+                    text="Write Bitstream to Flash"
+                    description="Build the bitstream if the run configuration says how, and write it to the flash the FPGA loads at power-up"/>
+            <separator/>
+            <action id="VerilogToolbox.OpenFpgaLoader.Detect"
+                    class="com.jotrorox.verilogtoolbox.OpenFpgaLoaderDetectAction"
+                    text="Detect FPGA"
+                    description="Show the USB probes that are plugged in and the FPGA the board's cable reaches"
+                    icon="AllIcons.Actions.Search"/>
+        </group>
+        <action id="VerilogToolbox.OpenFpgaLoader.FlashFile"
+                class="com.jotrorox.verilogtoolbox.OpenFpgaLoaderFlashFileAction"
+                text="Write to FPGA Flash"
+                description="Write this bitstream to the flash of the FPGA with openFPGALoader"
+                icon="/icons/openFpgaLoader.svg">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+        </action>
         <!-- On files: what belongs to the Quartus project, and which module is its top level. -->
         <action id="VerilogToolbox.Quartus.AddFile"
                 class="com.jotrorox.verilogtoolbox.QuartusAddFileAction"

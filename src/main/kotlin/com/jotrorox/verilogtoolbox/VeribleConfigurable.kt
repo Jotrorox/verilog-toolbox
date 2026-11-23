@@ -2,7 +2,7 @@ package com.jotrorox.verilogtoolbox
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
-import com.intellij.openapi.options.BoundConfigurable
+import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.DialogPanel
@@ -11,19 +11,42 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.ui.DocumentAdapter
+import com.intellij.ui.JBColor
+import com.intellij.ui.ScrollPaneFactory
+import com.intellij.ui.components.GradientViewport
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.Cell
+import com.intellij.ui.dsl.builder.MAX_LINE_LENGTH_WORD_WRAP
 import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.toNullableProperty
+import com.intellij.util.ui.JBUI
+import java.awt.BorderLayout
+import java.awt.Dimension
+import java.awt.Rectangle
 import java.io.IOException
+import java.nio.file.Files
 import java.nio.file.Path
+import javax.swing.JComponent
 import javax.swing.JEditorPane
+import javax.swing.JPanel
+import javax.swing.JViewport
+import javax.swing.Scrollable
+import javax.swing.SwingConstants
 import javax.swing.event.DocumentEvent
 
-/** Settings | Tools | Verilog Toolbox. */
-class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
+/**
+ * Settings | Tools | Verilog Toolbox.
+ *
+ * Not a BoundConfigurable: the dialog puts such a page into a margin panel and that into a scroll pane, which lays it
+ * out at its preferred width and scrolls sideways when the dialog is narrower. This page brings its own margin and
+ * scroll pane, NoMargin and NoScroll telling the dialog so, with a [ViewportWidthPanel] in it, so that it takes the
+ * dialog's width and its comments wrap.
+ */
+class VeribleConfigurable : Configurable, Configurable.NoScroll, Configurable.NoMargin {
+    private var panel: DialogPanel? = null
     private val settings = VeribleSettings.getInstance()
     private val toolchain = ToolchainSettings.getInstance()
     private lateinit var pathField: TextFieldWithBrowseButton
@@ -33,13 +56,40 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
     private lateinit var suiteStatus: JEditorPane
     private lateinit var quartusField: TextFieldWithBrowseButton
     private lateinit var quartusStatus: JEditorPane
+    private lateinit var openFpgaLoaderField: TextFieldWithBrowseButton
+    private lateinit var openFpgaLoaderStatus: JEditorPane
 
-    override fun createPanel(): DialogPanel = panel {
+    override fun getDisplayName(): String = "Verilog Toolbox"
+
+    override fun createComponent(): JComponent {
+        val page = createPanel().also { panel = it }
+        // The margin and scroll pane the dialog gives a DSL page itself.
+        page.border = JBUI.Borders.empty(5, 16, 10, 16)
+        return ScrollPaneFactory.createScrollPane(null, true).apply {
+            setViewport(GradientViewport(ViewportWidthPanel(page), JBUI.insetsTop(5), true))
+            verticalScrollBar.background = JBColor.PanelBackground
+            horizontalScrollBar.background = JBColor.PanelBackground
+        }
+    }
+
+    override fun getPreferredFocusedComponent(): JComponent? = panel?.preferredFocusedComponent
+
+    override fun isModified(): Boolean = panel?.isModified() == true
+
+    override fun reset() {
+        panel?.reset()
+    }
+
+    override fun disposeUIResources() {
+        panel = null
+    }
+
+    private fun createPanel(): DialogPanel = panel {
         group("slang Language Server") {
             row {
                 checkBox("Use slang-server")
                     .bindSelected(toolchain::slangServerEnabled)
-                    .comment(
+                    .wrappingComment(
                         "The default language server: diagnostics, navigation, hover, completion, rename and " +
                             "inlay hints. A project is configured in <code>.slang/server.json</code>, see the " +
                             "<a href=\"https://hudson-trading.github.io/slang-server/start/config/\">documentation</a>."
@@ -51,7 +101,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 )
                     .bindText(toolchain::slangServerPath)
                     .align(AlignX.FILL)
-                    .comment("Leave empty to use the downloaded slang-server, or else the one found on your PATH.")
+                    .wrappingComment("Leave empty to use the downloaded slang-server, or else the one found on your PATH.")
                     .component
             }
             row {
@@ -70,7 +120,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 )
                     .bindText(settings::languageServerPath)
                     .align(AlignX.FILL)
-                    .comment(
+                    .wrappingComment(
                         "Adds formatting and style lint, which slang-server does not have. " +
                             "Leave empty to use the verible-verilog-ls found on your PATH" +
                             (if (SystemInfo.isMac) " or in Homebrew's directories." else ".")
@@ -109,7 +159,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
             row {
                 comment(
                     "The nightly build from github.com/YosysHQ/oss-cad-suite-build (${OssCadSuite.DOWNLOAD_SIZE}). " +
-                        "Icarus Verilog, Verilator, Yosys and GTKWave are taken from it when their paths are " +
+                        "Icarus Verilog, Verilator, Yosys, GTKWave and openFPGALoader are taken from it when their paths are " +
                         "empty; older builds are removed after an update."
                 )
             }
@@ -121,7 +171,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 )
                     .bindText(toolchain::iverilogPath)
                     .align(AlignX.FILL)
-                    .comment(
+                    .wrappingComment(
                         "Leave empty to use the OSS CAD Suite's, or else the iverilog found on your PATH. " +
                             "vvp is taken from the same directory."
                     )
@@ -132,7 +182,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
             row {
                 checkBox("Lint open files with Verilator")
                     .bindSelected(toolchain::verilatorLintEnabled)
-                    .comment(
+                    .wrappingComment(
                         "A second source of diagnostics next to slang-server: width mismatches, incomplete " +
                             "cases, inferred latches and more. Files are linted in the design file list, when " +
                             "one is selected."
@@ -142,13 +192,13 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select verilator"))
                     .bindText(toolchain::verilatorPath)
                     .align(AlignX.FILL)
-                    .comment("Leave empty to use the OSS CAD Suite's, or else the verilator found on your PATH.")
+                    .wrappingComment("Leave empty to use the OSS CAD Suite's, or else the verilator found on your PATH.")
             }
             row("Options:") {
                 textField()
                     .bindText(toolchain::verilatorOptions)
                     .align(AlignX.FILL)
-                    .comment(
+                    .wrappingComment(
                         "Added to <code>--lint-only</code>, such as <code>-Wall</code> for the style warnings " +
                             "or <code>-Wno-UNUSEDSIGNAL</code> to switch one off."
                     )
@@ -159,7 +209,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select yosys"))
                     .bindText(toolchain::yosysPath)
                     .align(AlignX.FILL)
-                    .comment(
+                    .wrappingComment(
                         "Leave empty to use the OSS CAD Suite's, or else the yosys found on your PATH. " +
                             "SystemVerilog is read with the yosys-slang plugin where Yosys has it."
                     )
@@ -167,7 +217,30 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
             row("Check Synthesis for:") {
                 comboBox(SynthesisTarget.entries)
                     .bindItem(toolchain::synthesisTarget.toNullableProperty())
-                    .comment("The cells the resource summary counts: generic gates, or those of an FPGA family.")
+                    .wrappingComment("The cells the resource summary counts: generic gates, or those of an FPGA family.")
+            }
+        }
+        group("openFPGALoader") {
+            row("Path to openFPGALoader:") {
+                openFpgaLoaderField = textFieldWithBrowseButton(
+                    FileChooserDescriptorFactory.singleFile().withTitle("Select openFPGALoader")
+                )
+                    .bindText(toolchain::openFpgaLoaderPath)
+                    .align(AlignX.FILL)
+                    .wrappingComment(
+                        "Programs the FPGA. Leave empty to use the OSS CAD Suite's, or else the openFPGALoader found on your PATH" +
+                            (if (SystemInfo.isMac) " or in Homebrew's directories." else ".") +
+                            " A build command run before programming finds the other tools of the same directory, such as Yosys and nextpnr."
+                    )
+                    .component
+            }
+            row {
+                openFpgaLoaderStatus = comment(openFpgaLoaderStatusText()).component
+                openFpgaLoaderField.textField.document.addDocumentListener(object : DocumentAdapter() {
+                    override fun textChanged(e: DocumentEvent) {
+                        openFpgaLoaderStatus.text = openFpgaLoaderStatusText()
+                    }
+                })
             }
         }
         group("Quartus Prime") {
@@ -177,7 +250,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 )
                     .bindText(toolchain::quartusPath)
                     .align(AlignX.FILL)
-                    .comment(
+                    .wrappingComment(
                         "The directory Quartus Prime is installed in, such as " +
                             (if (SystemInfo.isWindows) "<code>C:\\altera_lite\\25.1std</code>" else "<code>~/altera_lite/25.1std</code>") +
                             ". Leave empty to find it where QUARTUS_ROOTDIR points, on your PATH or where it installs by default."
@@ -195,7 +268,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
             row {
                 checkBox("Take megafunctions and primitives from Quartus's simulation libraries")
                     .bindSelected(toolchain::quartusSimulationLibraries)
-                    .comment(
+                    .wrappingComment(
                         "When the design is read from a Quartus project, modules such as <code>altpll</code> and " +
                             "<code>altsyncram</code> are known to slang-server, Verilator and Icarus Verilog from " +
                             "the models in <code>quartus/eda/sim_lib</code>."
@@ -206,7 +279,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
             row("Viewer:") {
                 comboBox(WaveformViewer.entries)
                     .bindItem(toolchain::waveformViewer.toNullableProperty())
-                    .comment(
+                    .wrappingComment(
                         "Opens the waveform a simulation dumps, with the signals saved for its testbench. " +
                             "If this viewer is not installed, the other one is used."
                     )
@@ -215,7 +288,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select gtkwave"))
                     .bindText(toolchain::gtkwavePath)
                     .align(AlignX.FILL)
-                    .comment(
+                    .wrappingComment(
                         "Leave empty to use the gtkwave found on your PATH" +
                             (if (SystemInfo.isMac) " or /Applications/gtkwave.app." else ".")
                     )
@@ -224,9 +297,22 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
                 textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select surfer"))
                     .bindText(toolchain::surferPath)
                     .align(AlignX.FILL)
-                    .comment("Leave empty to use the surfer found on your PATH.")
+                    .wrappingComment("Leave empty to use the surfer found on your PATH.")
             }
         }
+    }
+
+    /** Says which openFPGALoader the path in the field, which need not be applied yet, stands for; never runs it. */
+    private fun openFpgaLoaderStatusText(): String {
+        val path = if (::openFpgaLoaderField.isInitialized) openFpgaLoaderField.text.trim() else toolchain.openFpgaLoaderPath
+        if (path.isNotEmpty()) {
+            val file = runCatching { Path.of(path) }.getOrNull()
+            return if (file != null && Files.isExecutable(file) && !Files.isDirectory(file)) "Using $file." else "There is no program at this path."
+        }
+        val found = OssCadSuite.tool(OpenFpgaLoader.TOOL)?.let { "Found in the OSS CAD Suite: $it." }
+            ?: findInstalledExecutable(if (SystemInfo.isWindows) "${OpenFpgaLoader.TOOL}.exe" else OpenFpgaLoader.TOOL)?.let { "Found: $it." }
+        return found ?: "openFPGALoader was not found. The OSS CAD Suite has it" +
+            (if (SystemInfo.isMac) ", and <code>brew install openfpgaloader</code> installs it alone." else ".")
     }
 
     /** Says which Quartus the path in the field, which need not be applied yet, stands for. */
@@ -295,7 +381,7 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
     }
 
     override fun apply() {
-        super.apply()
+        panel?.apply()
         VeribleLspIntegrationProvider.restartEverywhere()
         // Verilator lint follows its settings in the open files, and a Quartus design its libraries.
         for (project in ProjectManager.getInstance().openProjects) {
@@ -303,4 +389,30 @@ class VeribleConfigurable : BoundConfigurable("Verilog Toolbox") {
             DaemonCodeAnalyzer.getInstance(project).restart("Verilog Toolbox settings changed")
         }
     }
+}
+
+/** A comment that wraps to the width it is given, where the DSL's default keeps it 70 characters wide whatever the room. */
+private fun <T : JComponent> Cell<T>.wrappingComment(text: String): Cell<T> = comment(text, MAX_LINE_LENGTH_WORD_WRAP)
+
+/**
+ * Holds a settings page so that it is laid out at the width of the scroll pane it is the view of, and taller instead of
+ * wider where its comments wrap. It scrolls sideways only when the dialog is narrower than the page can be.
+ */
+private class ViewportWidthPanel(content: JComponent) : JPanel(BorderLayout()), Scrollable {
+    init {
+        isOpaque = false
+        add(content)
+    }
+
+    override fun getPreferredScrollableViewportSize(): Dimension = preferredSize
+
+    override fun getScrollableUnitIncrement(visibleRect: Rectangle, orientation: Int, direction: Int): Int = JBUI.scale(16)
+
+    override fun getScrollableBlockIncrement(visibleRect: Rectangle, orientation: Int, direction: Int): Int =
+        if (orientation == SwingConstants.VERTICAL) visibleRect.height else visibleRect.width
+
+    override fun getScrollableTracksViewportWidth(): Boolean =
+        (parent as? JViewport)?.let { it.width >= minimumSize.width } == true
+
+    override fun getScrollableTracksViewportHeight(): Boolean = false
 }

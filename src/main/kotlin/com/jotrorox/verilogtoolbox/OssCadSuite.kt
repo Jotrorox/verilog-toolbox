@@ -206,7 +206,7 @@ object OssCadSuite {
                     val root = downloadLatest(indicator)
                     group.createNotification(
                         "OSS CAD Suite ${root.name} installed",
-                        "Icarus Verilog, Verilator, Yosys and GTKWave are ready to use.",
+                        "Icarus Verilog, Verilator, Yosys, GTKWave and openFPGALoader are ready to use.",
                         NotificationType.INFORMATION,
                     ).notify(project)
                 } catch (e: IOException) {

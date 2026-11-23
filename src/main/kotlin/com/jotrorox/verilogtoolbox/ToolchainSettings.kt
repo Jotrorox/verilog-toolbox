@@ -12,7 +12,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 
-/** Settings of the slang language server, the simulation, lint and synthesis tools and the waveform viewers. */
+/** Settings of the slang language server, the simulation, lint and synthesis tools, the programmer and the waveform viewers. */
 @Service(Service.Level.APP)
 @State(name = "VerilogToolboxToolchain", storages = [Storage("verilogToolbox.xml")])
 class ToolchainSettings :
@@ -37,6 +37,7 @@ class ToolchainSettings :
         @JvmField var synthesisTarget: SynthesisTarget = SynthesisTarget.GENERIC,
         @JvmField var quartusPath: String = "",
         @JvmField var quartusSimulationLibraries: Boolean = true,
+        @JvmField var openFpgaLoaderPath: String = "",
     )
 
     /** Whether slang-server, the default language server, is used at all. */
@@ -143,6 +144,13 @@ class ToolchainSettings :
             updateState { it.copy(quartusSimulationLibraries = value) }
         }
 
+    /** Path to `openFPGALoader`; empty means "use the OSS CAD Suite's, or else look it up on PATH". */
+    var openFpgaLoaderPath: String
+        get() = state.openFpgaLoaderPath
+        set(value) {
+            updateState { it.copy(openFpgaLoaderPath = value.trim()) }
+        }
+
     /**
      * The slang-server to launch: the configured path if valid, otherwise the copy the plugin downloaded,
      * otherwise the one on PATH. `null` when it is switched off or not installed.
@@ -165,6 +173,8 @@ class ToolchainSettings :
         else OssCadSuite.tool("verilator_bin") ?: findOnPath(binary("verilator"))
 
     fun findYosys(): Path? = findTool(yosysPath, "yosys")
+
+    fun findOpenFpgaLoader(): Path? = findTool(openFpgaLoaderPath, OpenFpgaLoader.TOOL)
 
     /** The [configured] path if it is valid, otherwise the suite's copy of [name], otherwise the one on PATH. */
     private fun findTool(configured: String, name: String): Path? =
