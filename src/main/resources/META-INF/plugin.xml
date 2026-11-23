@@ -6,8 +6,8 @@
 
     <description><![CDATA[
         <p>Verilog and SystemVerilog support for CLion: slang-server code insight, Verilator lint, Icarus Verilog
-        testbenches in the test runner, a testbench generator, Yosys synthesis checks and GTKWave or Surfer
-        waveforms, with the tools downloadable as the OSS CAD Suite.</p>
+        testbenches in the test runner, a testbench generator, Yosys synthesis checks, GTKWave or Surfer
+        waveforms and Quartus Prime projects, with the open source tools downloadable as the OSS CAD Suite.</p>
         <ul>
             <li>Diagnostics, navigation, hover, completion, rename and inlay hints from the slang-server language
                 server, downloaded automatically; Verible optional for formatting and style lint</li>
@@ -16,6 +16,8 @@
                 a pass/fail tree in the test runner</li>
             <li>Generate Testbench for a module: instance, clock, reset and waveform dump already written</li>
             <li>Check Synthesis with Yosys, for generic gates or iCE40, ECP5, Gowin and Xilinx 7-series</li>
+            <li>Quartus Prime without its window: compile, program the device, assign pins and read the timing
+                and resource reports, with the design of the <code>.qsf</code> shared with the other tools</li>
             <li>Open waveforms in GTKWave or Surfer, reloaded after every re-run, and add the signal at the caret</li>
             <li>One <code>.f</code> file list defines the design for slang-server and the simulator</li>
         </ul>
@@ -65,6 +67,30 @@
         <internalFileTemplate name="SystemVerilog Header"/>
         <internalFileTemplate name="Verilog Header"/>
 
+        <!-- Quartus Tcl: settings (.qsf, .qpf, .qip), constraints (.sdc) and reports. -->
+        <fileType name="Quartus Settings" language="QuartusTcl" extensions="qsf;qpf;qip;qdf" fieldName="INSTANCE"
+                  implementationClass="com.jotrorox.verilogtoolbox.QuartusTclSettingsFileType"/>
+        <!-- Secondary to the settings type, which keeps the language association; so no language attribute. -->
+        <fileType name="SDC Constraints" extensions="sdc" fieldName="INSTANCE"
+                  implementationClass="com.jotrorox.verilogtoolbox.QuartusTclSdcFileType"/>
+        <!-- Quartus's text reports open as plain text; patterns, so that other .rpt and .summary files stay unclaimed. -->
+        <fileType name="Quartus Report" fieldName="INSTANCE"
+                  implementationClass="com.jotrorox.verilogtoolbox.QuartusTclReportFileType"
+                  patterns="*.map.rpt;*.syn.rpt;*.fit.rpt;*.asm.rpt;*.sta.rpt;*.flow.rpt;*.eda.rpt;*.pow.rpt;*.drc.rpt;*.pgm.rpt;*.map.summary;*.syn.summary;*.fit.summary;*.sta.summary;*.pow.summary;*.map.smsg;*.fit.smsg;*.sta.smsg;*.pin"/>
+        <lang.parserDefinition language="QuartusTcl"
+                               implementationClass="com.jotrorox.verilogtoolbox.QuartusTclParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="QuartusTcl"
+                                       implementationClass="com.jotrorox.verilogtoolbox.QuartusTclSyntaxHighlighterFactory"/>
+        <colorSettingsPage implementation="com.jotrorox.verilogtoolbox.QuartusTclColorSettingsPage"/>
+        <lang.commenter language="QuartusTcl"
+                        implementationClass="com.jotrorox.verilogtoolbox.QuartusTclCommenter"/>
+        <lang.braceMatcher language="QuartusTcl"
+                           implementationClass="com.jotrorox.verilogtoolbox.QuartusTclBraceMatcher"/>
+        <lang.quoteHandler language="QuartusTcl"
+                           implementationClass="com.jotrorox.verilogtoolbox.QuartusTclQuoteHandler"/>
+        <completion.contributor language="QuartusTcl"
+                                implementationClass="com.jotrorox.verilogtoolbox.QuartusTclCompletionContributor"/>
+
         <!-- slang-server: the default language server, downloaded when it is missing. -->
         <platform.lsp.integrationProvider
                 implementation="com.jotrorox.verilogtoolbox.SlangLspIntegrationProvider"/>
@@ -84,6 +110,14 @@
                 implementation="com.jotrorox.verilogtoolbox.IcarusRunConfigurationProducer"/>
         <runLineMarkerContributor language="Verilog"
                                   implementationClass="com.jotrorox.verilogtoolbox.IcarusRunLineMarkerContributor"/>
+
+        <!-- Quartus Prime: compile the project found in the IDE project, program its device, read its settings. -->
+        <configurationType implementation="com.jotrorox.verilogtoolbox.QuartusConfigurationType"/>
+        <runConfigurationProducer
+                implementation="com.jotrorox.verilogtoolbox.QuartusRunConfigurationProducer"/>
+        <postStartupActivity implementation="com.jotrorox.verilogtoolbox.QuartusStartupActivity"/>
+        <toolWindow id="Quartus" anchor="right" icon="/icons/quartusToolWindow.svg" canCloseContents="false"
+                    factoryClass="com.jotrorox.verilogtoolbox.QuartusToolWindowFactory"/>
 
         <!-- Verilator: a second source of diagnostics, linting the open file in the design. -->
         <externalAnnotator language="Verilog"
@@ -141,6 +175,129 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <!-- Quartus Prime: what its window is opened for, from compiling to programming the device. -->
+        <group id="VerilogToolbox.Quartus" text="Quartus Prime" popup="true" icon="/icons/quartus.svg"
+               description="Compile the Quartus Prime project, program its device and change its settings">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="VerilogToolbox.Quartus.NewProject"
+                    class="com.jotrorox.verilogtoolbox.QuartusNewProjectAction"
+                    text="New Quartus Project…"
+                    description="Create a Quartus Prime project (.qpf and .qsf) for a device, with the Verilog sources of this project"
+                    icon="AllIcons.General.Add"/>
+            <separator/>
+            <action id="VerilogToolbox.Quartus.Analyze"
+                    class="com.jotrorox.verilogtoolbox.QuartusAnalyzeAction"
+                    text="Analysis &amp;&amp; Elaboration"
+                    description="Check the design for errors with Quartus Prime, without synthesizing it"
+                    icon="AllIcons.Actions.Checked"/>
+            <action id="VerilogToolbox.Quartus.Compile"
+                    class="com.jotrorox.verilogtoolbox.QuartusCompileAction"
+                    text="Compile Design"
+                    description="Synthesize, fit, assemble and analyze the timing of the Quartus Prime project"
+                    icon="AllIcons.Actions.Compile"/>
+            <action id="VerilogToolbox.Quartus.Program"
+                    class="com.jotrorox.verilogtoolbox.QuartusProgramAction"
+                    text="Program Device"
+                    description="Program the device with the file of the last compilation"
+                    icon="AllIcons.Actions.Download"/>
+            <action id="VerilogToolbox.Quartus.CompileAndProgram"
+                    class="com.jotrorox.verilogtoolbox.QuartusCompileAndProgramAction"
+                    text="Compile Design and Program Device"
+                    description="Compile the Quartus Prime project and, if that succeeds, program the device"
+                    icon="AllIcons.Actions.Execute"/>
+            <group id="VerilogToolbox.Quartus.Steps" text="Run Step" popup="true" icon="AllIcons.Actions.More"
+                   description="Run one step of the compilation again">
+                <action id="VerilogToolbox.Quartus.Synthesize"
+                        class="com.jotrorox.verilogtoolbox.QuartusSynthesizeAction"
+                        text="Analysis &amp;&amp; Synthesis"
+                        description="Synthesize the design"/>
+                <action id="VerilogToolbox.Quartus.Fit"
+                        class="com.jotrorox.verilogtoolbox.QuartusFitAction"
+                        text="Fitter (Place &amp;&amp; Route)"
+                        description="Place and route the synthesized design"/>
+                <action id="VerilogToolbox.Quartus.Assemble"
+                        class="com.jotrorox.verilogtoolbox.QuartusAssembleAction"
+                        text="Assembler (Generate Programming Files)"
+                        description="Write the programming files of the fitted design"/>
+                <action id="VerilogToolbox.Quartus.Timing"
+                        class="com.jotrorox.verilogtoolbox.QuartusTimingAction"
+                        text="Timing Analysis"
+                        description="Analyze the timing of the fitted design, after a change to the constraints"/>
+            </group>
+            <separator/>
+            <action id="VerilogToolbox.Quartus.ShowOverview"
+                    class="com.jotrorox.verilogtoolbox.QuartusShowOverviewAction"
+                    text="Compilation Overview"
+                    description="Show the device, the last compilation, its timing and its resources in the Quartus tool window"/>
+            <action id="VerilogToolbox.Quartus.ShowPins"
+                    class="com.jotrorox.verilogtoolbox.QuartusShowPinsAction"
+                    text="Pin Assignments"
+                    description="Assign the ports of the top-level entity to pins and I/O standards in the Quartus tool window"/>
+            <action id="VerilogToolbox.Quartus.ShowMessages"
+                    class="com.jotrorox.verilogtoolbox.QuartusShowMessagesAction"
+                    text="Messages"
+                    description="Show the errors and warnings of the last compilation in the Quartus tool window"/>
+            <group id="VerilogToolbox.Quartus.Reports"
+                   class="com.jotrorox.verilogtoolbox.QuartusReportsGroup"
+                   text="Reports" popup="true" icon="AllIcons.Actions.ListFiles"
+                   description="Open a report of the last compilation"/>
+            <action id="VerilogToolbox.Quartus.ChangeDevice"
+                    class="com.jotrorox.verilogtoolbox.QuartusChangeDeviceAction"
+                    text="Device…"
+                    description="Choose the device family and the device the project is compiled for"/>
+            <action id="VerilogToolbox.Quartus.OpenSettings"
+                    class="com.jotrorox.verilogtoolbox.QuartusOpenSettingsAction"
+                    text="Open Settings File"
+                    description="Open the .qsf file of the revision, which holds every assignment"
+                    icon="AllIcons.General.Settings"/>
+            <action id="VerilogToolbox.Quartus.OpenInQuartus"
+                    class="com.jotrorox.verilogtoolbox.QuartusOpenInQuartusAction"
+                    text="Open in Quartus Prime"
+                    description="Open the project in Quartus Prime itself"
+                    icon="AllIcons.Ide.External_link_arrow"/>
+            <action id="VerilogToolbox.Quartus.Refresh"
+                    class="com.jotrorox.verilogtoolbox.QuartusRefreshAction"
+                    text="Refresh"
+                    description="Look for Quartus project files and reports again"
+                    icon="AllIcons.Actions.Refresh"/>
+        </group>
+        <!-- The toolbar of the Quartus tool window. -->
+        <group id="VerilogToolbox.Quartus.Toolbar">
+            <reference ref="VerilogToolbox.Quartus.Analyze"/>
+            <reference ref="VerilogToolbox.Quartus.Compile"/>
+            <reference ref="VerilogToolbox.Quartus.Program"/>
+            <reference ref="VerilogToolbox.Quartus.CompileAndProgram"/>
+            <reference ref="VerilogToolbox.Quartus.Steps"/>
+            <separator/>
+            <reference ref="VerilogToolbox.Quartus.Reports"/>
+            <reference ref="VerilogToolbox.Quartus.OpenSettings"/>
+            <reference ref="VerilogToolbox.Quartus.OpenInQuartus"/>
+            <reference ref="VerilogToolbox.Quartus.Refresh"/>
+        </group>
+        <!-- On files: what belongs to the Quartus project, and which module is its top level. -->
+        <action id="VerilogToolbox.Quartus.AddFile"
+                class="com.jotrorox.verilogtoolbox.QuartusAddFileAction"
+                text="Add to Quartus Project"
+                description="List this file in the settings file of the Quartus project">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+        </action>
+        <action id="VerilogToolbox.Quartus.RemoveFile"
+                class="com.jotrorox.verilogtoolbox.QuartusRemoveFileAction"
+                text="Remove from Quartus Project"
+                description="Take this file out of the settings file of the Quartus project">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+        </action>
+        <action id="VerilogToolbox.Quartus.SetTopLevel"
+                class="com.jotrorox.verilogtoolbox.QuartusSetTopLevelAction"
+                text="Set as Quartus Top-Level Entity"
+                description="Make this module the top-level entity of the Quartus project">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
         </action>
     </actions>
 </idea-plugin>

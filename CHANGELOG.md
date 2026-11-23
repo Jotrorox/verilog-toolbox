@@ -6,6 +6,21 @@
 
 ### Added
 
+- Quartus Prime support, so that Quartus itself need not be opened: the Quartus project (`.qpf`/`.qsf`) of a
+  project and the Quartus installation are found without configuration
+- A "Quartus Prime" run configuration and actions for Analysis & Elaboration, full compilation, the single
+  steps and programming the device with `quartus_pgm`, with messages coloured by severity, links from
+  `File: … Line: …` to the source and a closing summary of resources, timing and errors
+- A Quartus tool window: device, top-level entity, the steps of the last compilation, Fmax and slacks,
+  resource usage and the reports; a table to assign pins and I/O standards, which edits the `.qsf`; and the
+  messages of the last compilation by severity
+- "New Quartus Project…", "Device…", "Add to / Remove from Quartus Project", "Set as Quartus Top-Level Entity"
+  and "Open in Quartus Prime"
+- The design is read from the `.qsf` when a project has one: slang-server, Verilator lint, Check Synthesis and
+  Icarus Verilog runs use its sources, search paths, macros and `.qip` files, and know Altera's megafunctions
+  from Quartus's simulation libraries
+- Highlighting, commenting and completion for `.qsf`, `.qpf`, `.qip` and `.sdc` files; Quartus's reports open
+  as text
 - "Add to Waveform" in the editor: the signal at the caret is added to the GTKWave or Surfer that Open Waveform
   started, under its hierarchical name in the simulation, with a choice when its module has several instances
 - Verilator lint as a second source of diagnostics next to slang-server, run on the open file as it is edited,
@@ -23,6 +38,8 @@
 
 ### Fixed
 
+- The settings and the selected design are saved. They were written as empty and so were back at their
+  defaults, with no design selected, after the IDE was restarted
 - Verible on Intel Macs, which has no prebuilt download: the settings show the Homebrew commands instead of a
   download button that fails, and a Verible installed with Homebrew is found even when CLion was started from
   the Dock without the shell's PATH

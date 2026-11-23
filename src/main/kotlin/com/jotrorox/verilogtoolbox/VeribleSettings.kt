@@ -14,7 +14,8 @@ import java.nio.file.Path
 class VeribleSettings :
     SerializablePersistentStateComponent<VeribleSettings.State>(State()) {
 
-    data class State(@JvmField val languageServerPath: String = "")
+    /** Fields are `var` so that the platform saves them, see [ToolchainSettings.State]. */
+    data class State(@JvmField var languageServerPath: String = "")
 
     /** Path to `verible-verilog-ls`; empty means "look it up on PATH, or where Homebrew puts it". */
     var languageServerPath: String
