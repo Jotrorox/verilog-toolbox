@@ -6,6 +6,16 @@
 
 ### Added
 
+- openFPGALoader support: an "openFPGALoader" run configuration and "Load Bitstream into FPGA", "Write
+  Bitstream to Flash" and "Detect FPGA" in Tools, "Run 'Load …'" and "Write to FPGA Flash" on bitstream files.
+  The board, cable, FPGA part and bitstream are read from the project's Makefile, which also builds the
+  bitstream before it is programmed; the build finds the tools of openFPGALoader's suite on its PATH
+- The console of a programming run shows openFPGALoader's progress bar in one line, colours its warnings,
+  points out a bitstream older than its sources, and ends with the result or with what to do about a cable
+  that is not found, missing udev rules or WinUSB driver, an unknown board, a bitstream for another FPGA and
+  other common errors
+- A searchable list of the boards and cables openFPGALoader knows in the run configuration, and a setting for
+  the path of openFPGALoader, which is otherwise taken from the OSS CAD Suite, PATH or Homebrew
 - Quartus Prime support, so that Quartus itself need not be opened: the Quartus project (`.qpf`/`.qsf`) of a
   project and the Quartus installation are found without configuration
 - A "Quartus Prime" run configuration and actions for Analysis & Elaboration, full compilation, the single
@@ -43,6 +53,8 @@
 - Verible on Intel Macs, which has no prebuilt download: the settings show the Homebrew commands instead of a
   download button that fails, and a Verible installed with Homebrew is found even when CLion was started from
   the Dock without the shell's PATH
+- The settings page is as wide as the Settings dialog, its comments wrapping. It was wider and scrolled
+  sideways, which cut off the ends of the longer comments
 
 ## [0.2.1] - 2026-11-16
 
