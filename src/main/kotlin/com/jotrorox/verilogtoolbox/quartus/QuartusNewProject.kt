@@ -6,7 +6,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
-import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
@@ -262,7 +262,7 @@ class QuartusNewProjectAction : DumbAwareAction() {
             ?: return QuartusActions.notify(project, "${settings.name}.qpf could not be read.", NotificationType.ERROR)
         service.select(quartusProject)
         service.useAsDesign()
-        created["${settings.name}.qsf"]?.let { FileEditorManager.getInstance(project).openFile(it, true) }
+        created["${settings.name}.qsf"]?.let { OpenFileDescriptor(project, it).navigate(true) }
     }
 }
 
