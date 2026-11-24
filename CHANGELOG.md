@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- Highlighting and commenting for Gowin physical constraint files (`.cst`): constraints such as `IO_LOC` and
+  `IO_PORT`, port names, pins and sites, attributes and their values, `//` and `/* */` comments, with
+  colours of their own under Settings | Editor | Color Scheme | Gowin Constraints
+
+### Changed
+
+- The code is organised into one package per feature, and `plugin.xml` includes one descriptor per feature
+  from `META-INF/features/`, so that support for another tool can be added in one place
+
 ## [0.3.0] - 2026-11-24
 
 ### Added

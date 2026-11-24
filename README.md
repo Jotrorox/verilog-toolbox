@@ -22,6 +22,8 @@ Verilog and SystemVerilog support for CLion.
   `.qsf` shared with every other tool
 - Program the FPGA with [openFPGALoader](https://github.com/trabucayre/openFPGALoader): build the bitstream,
   load it into SRAM or write it to flash, with the board and bitstream read from the project's Makefile
+- Highlighting and commenting for Gowin physical constraint files (`.cst`), as used by the Gowin EDA and by
+  nextpnr-himbaechel with apicula, for boards such as the Tang Nano and Tang Primer
 - Open waveforms in [GTKWave](https://gtkwave.sourceforge.net) or [Surfer](https://surfer-project.org);
   the viewer reloads after every re-run, and **Add to Waveform** in the editor shows the signal at the caret
   in it
@@ -209,6 +211,11 @@ with all of them at the top. The action has no shortcut of its own; give it one 
 ./gradlew runIde   # start CLion with the plugin
 ./gradlew check    # run tests
 ```
+
+The code is split into one package per feature (`verilog`, `quartus`, `gowin`, `openfpgaloader`, …), each
+with its own descriptor under `src/main/resources/META-INF/features/`. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the layout and how to add support for another tool or file
+type.
 
 ## License
 

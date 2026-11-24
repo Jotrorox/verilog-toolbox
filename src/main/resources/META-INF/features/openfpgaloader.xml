@@ -1,0 +1,40 @@
+<!-- openFPGALoader: programming FPGAs. Included by plugin.xml. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- openFPGALoader: build a bitstream if asked to, then load it into the FPGA or write it to its flash. -->
+        <configurationType implementation="com.jotrorox.verilogtoolbox.openfpgaloader.OpenFpgaLoaderConfigurationType"/>
+        <runConfigurationProducer
+                implementation="com.jotrorox.verilogtoolbox.openfpgaloader.OpenFpgaLoaderRunConfigurationProducer"/>
+    </extensions>
+
+    <actions>
+        <!-- openFPGALoader: program the project's bitstream, and say what is connected. -->
+        <group id="VerilogToolbox.OpenFpgaLoader" text="openFPGALoader" popup="true" icon="/icons/openFpgaLoader.svg"
+               description="Load the bitstream into the FPGA or write it to the flash with openFPGALoader">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="VerilogToolbox.OpenFpgaLoader.Load"
+                    class="com.jotrorox.verilogtoolbox.openfpgaloader.OpenFpgaLoaderLoadAction"
+                    text="Load Bitstream into FPGA"
+                    description="Build the bitstream if the run configuration says how, and load it into the FPGA's SRAM until it loses power"
+                    icon="AllIcons.Actions.Download"/>
+            <action id="VerilogToolbox.OpenFpgaLoader.Flash"
+                    class="com.jotrorox.verilogtoolbox.openfpgaloader.OpenFpgaLoaderFlashAction"
+                    text="Write Bitstream to Flash"
+                    description="Build the bitstream if the run configuration says how, and write it to the flash the FPGA loads at power-up"/>
+            <separator/>
+            <action id="VerilogToolbox.OpenFpgaLoader.Detect"
+                    class="com.jotrorox.verilogtoolbox.openfpgaloader.OpenFpgaLoaderDetectAction"
+                    text="Detect FPGA"
+                    description="Show the USB probes that are plugged in and the FPGA the board's cable reaches"
+                    icon="AllIcons.Actions.Search"/>
+        </group>
+        <action id="VerilogToolbox.OpenFpgaLoader.FlashFile"
+                class="com.jotrorox.verilogtoolbox.openfpgaloader.OpenFpgaLoaderFlashFileAction"
+                text="Write to FPGA Flash"
+                description="Write this bitstream to the flash of the FPGA with openFPGALoader"
+                icon="/icons/openFpgaLoader.svg">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

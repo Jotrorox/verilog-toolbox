@@ -1,0 +1,14 @@
+<!-- Yosys synthesis checks. Included by plugin.xml. -->
+<idea-plugin>
+    <actions>
+        <!-- Yosys: synthesize a module, report problems and sum up the resources it takes. -->
+        <action id="VerilogToolbox.CheckSynthesis"
+                class="com.jotrorox.verilogtoolbox.yosys.CheckSynthesisAction"
+                text="Check Synthesis"
+                description="Synthesize the module with Yosys, report what does not synthesize and sum up the resources it takes">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

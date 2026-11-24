@@ -1,0 +1,16 @@
+<!-- Gowin: physical constraint files (.cst). Included by plugin.xml. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType name="Gowin Constraints" language="GowinCst" extensions="cst" fieldName="INSTANCE"
+                  implementationClass="com.jotrorox.verilogtoolbox.gowin.GowinCstFileType"/>
+        <lang.parserDefinition language="GowinCst"
+                               implementationClass="com.jotrorox.verilogtoolbox.gowin.GowinCstParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="GowinCst"
+                                       implementationClass="com.jotrorox.verilogtoolbox.gowin.GowinCstSyntaxHighlighterFactory"/>
+        <colorSettingsPage implementation="com.jotrorox.verilogtoolbox.gowin.GowinCstColorSettingsPage"/>
+        <lang.commenter language="GowinCst"
+                        implementationClass="com.jotrorox.verilogtoolbox.gowin.GowinCstCommenter"/>
+        <lang.quoteHandler language="GowinCst"
+                           implementationClass="com.jotrorox.verilogtoolbox.gowin.GowinCstQuoteHandler"/>
+    </extensions>
+</idea-plugin>

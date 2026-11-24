@@ -1,0 +1,11 @@
+<!-- Icarus Verilog: testbench runs in the test runner. Included by plugin.xml. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Icarus Verilog: compile a testbench with iverilog and simulate it with vvp. -->
+        <configurationType implementation="com.jotrorox.verilogtoolbox.icarus.IcarusConfigurationType"/>
+        <runConfigurationProducer
+                implementation="com.jotrorox.verilogtoolbox.icarus.IcarusRunConfigurationProducer"/>
+        <runLineMarkerContributor language="Verilog"
+                                  implementationClass="com.jotrorox.verilogtoolbox.icarus.IcarusRunLineMarkerContributor"/>
+    </extensions>
+</idea-plugin>
