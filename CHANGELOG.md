@@ -6,9 +6,26 @@
 
 ### Added
 
+- One-click programming of Gowin boards without a Makefile: a project with a `.cst` file is built by the
+  plugin with Yosys, nextpnr-himbaechel and gowin_pack from the OSS CAD Suite, then loaded or flashed with
+  openFPGALoader. The board, the top module and the sources are found by themselves; the build is skipped
+  when nothing changed, and ends with the maximum frequency of each clock
+- Board presets for the Sipeed Tang Nano, Nano 1K, 4K, 9K and 20K, Primer 20K and 25K and Mega 138K, with
+  the values of apicula's examples
+- "Build first" in the openFPGALoader run configuration: nothing, a command, or the built-in Gowin build with
+  its board, constraint file, top module and optional file list. A Makefile still wins when there is one
+- "Run 'Load …'" on a `.cst` file builds it with the built-in build and loads the bitstream
+- Warnings in `.cst` files for names that are not ports of the top module, bits out of range, and ports of
+  the top module without an `IO_LOC`
+
 - Highlighting and commenting for Gowin physical constraint files (`.cst`): constraints such as `IO_LOC` and
   `IO_PORT`, port names, pins and sites, attributes and their values, `//` and `/* */` comments, with
   colours of their own under Settings | Editor | Color Scheme | Gowin Constraints
+
+### Fixed
+
+- Verilator lint and Check Synthesis of a file outside the selected file list added the parts of its path
+  to the design instead of the file
 
 ### Changed
 

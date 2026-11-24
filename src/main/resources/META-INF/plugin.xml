@@ -22,7 +22,9 @@
             <li>Program the FPGA with openFPGALoader: build the bitstream, load it into SRAM or write it to flash, with
                 the board and bitstream read from the project's Makefile, a live progress bar and advice when the
                 cable or FPGA is not found</li>
-            <li>Highlighting for Gowin physical constraint files (<code>.cst</code>)</li>
+            <li>Gowin boards in one click without a Makefile: the bitstream is built with Yosys, nextpnr and
+                gowin_pack, with presets for the Sipeed Tang boards, then programmed</li>
+            <li>Highlighting and checks for Gowin physical constraint files (<code>.cst</code>)</li>
             <li>Open waveforms in GTKWave or Surfer, reloaded after every re-run, and add the signal at the caret</li>
             <li>One <code>.f</code> file list defines the design for slang-server and the simulator</li>
         </ul>

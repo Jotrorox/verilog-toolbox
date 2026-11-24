@@ -211,6 +211,45 @@ class OpenFpgaLoaderProjectTest {
         assertNull(OpenFpgaLoaderProject.findMakefile(project, project))
     }
 
+    /** A project with Verilog sources and a constraint file, as minepga is without its Makefile. */
+    private fun gowinProject(name: String): Path {
+        val project = Files.createDirectories(root.resolve(name))
+        Files.createDirectories(project.resolve("src"))
+        Files.writeString(project.resolve("src/top.v"), "module top(input clk, output [7:0] led); endmodule\n")
+        Files.createDirectories(project.resolve("constraints"))
+        Files.writeString(project.resolve("constraints/primer25k.cst"), "IO_LOC \"clk\" E2;\nIO_LOC \"led[0]\" G5;\n")
+        return project
+    }
+
+    @Test
+    fun withoutMakefileAConstraintFileIsBuiltByThePlugin() {
+        val project = gowinProject("gowin")
+        // A bitstream an old Makefile left behind is not what gets programmed.
+        Files.createDirectories(project.resolve("build"))
+        Files.writeString(project.resolve("build/top.fs"), "x")
+        val programming = OpenFpgaLoaderProject.detect(project, FpgaDestination.FLASH)
+        assertEquals(project.resolve("build/gowin/top.fs"), programming.bitstream)
+        assertEquals(FpgaTarget(board = "tangprimer25k", destination = FpgaDestination.FLASH), programming.target)
+        assertEquals("", programming.buildCommand)
+        assertEquals("constraints/primer25k.cst, built-in Gowin build", programming.source)
+        assertEquals("tangprimer25k", programming.gowin?.board?.id)
+        assertEquals(project.resolve("constraints/primer25k.cst"), programming.gowin?.constraints)
+        assertEquals("top", programming.gowin?.top)
+    }
+
+    @Test
+    fun aMakefileStillWinsOverTheBuiltInBuild() {
+        val project = gowinProject("gowin-make")
+        Files.writeString(project.resolve("Makefile"), "build/top.fs: src/top.v\n\tyosys\nload: build/top.fs\n\topenFPGALoader -b tangprimer25k \$<\n")
+        val programming = OpenFpgaLoaderProject.detect(project, FpgaDestination.SRAM)
+        assertNull(programming.gowin)
+        assertEquals("make build/top.fs", programming.buildCommand)
+        // Unless the user chose the constraint file.
+        val chosen = OpenFpgaLoaderProject.detect(project, FpgaDestination.SRAM, constraints = project.resolve("constraints/primer25k.cst"))
+        assertEquals("tangprimer25k", chosen.gowin?.board?.id)
+        assertEquals("", chosen.buildCommand)
+    }
+
     @Test
     fun withoutMakefileTheNewestBitstreamIsTaken() {
         val project = Files.createDirectories(root.resolve("plain"))

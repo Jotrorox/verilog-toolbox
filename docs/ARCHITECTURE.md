@@ -10,7 +10,7 @@ All under `src/main/kotlin/com/jotrorox/verilogtoolbox/`:
 
 | Package          | What it holds                                                                              |
 |------------------|--------------------------------------------------------------------------------------------|
-| `common`         | Shared infrastructure: `.f` file lists, the design definition, the OSS CAD Suite, GitHub releases |
+| `common`         | Shared infrastructure: `.f` file lists, the design definition, the OSS CAD Suite, GitHub releases, `BuildPlan` |
 | `settings`       | Tool paths and options, and the **Settings → Tools → Verilog Toolbox** page                |
 | `verilog`        | The Verilog/SystemVerilog language: file type, lexer, highlighting, folding, templates, module headers |
 | `lsp`            | slang-server and Verible language servers, their downloads, and the design slang-server elaborates |
@@ -22,13 +22,13 @@ All under `src/main/kotlin/com/jotrorox/verilogtoolbox/`:
 | `quartus`        | Quartus Prime: projects, runs, pins, reports, the tool window                              |
 | `quartus.tcl`    | The Tcl dialect of `.qsf`, `.qpf`, `.qip` and `.sdc` files                                 |
 | `openfpgaloader` | Programming FPGAs with openFPGALoader                                                      |
-| `gowin`          | Gowin physical constraint files (`.cst`)                                                   |
+| `gowin`          | Gowin `.cst` files and their checks, board presets, and the built-in Yosys/nextpnr/gowin_pack build |
 
 Tests mirror the same packages under `src/test/kotlin/`. Plain unit tests are named `…Test`, tests that need
 the IntelliJ platform `…PlatformTest`.
 
 `verilog` depends on no other package of the plugin, and new features should only depend on `verilog`,
-`common` and `settings`. `settings` is the exception the other way round: the settings page brings the options
+`common` and `settings`, or on a family package such as `gowin` for the build they offer, as `openfpgaloader` does. `settings` is the exception the other way round: the settings page brings the options
 of every tool together, so it knows the feature packages, and so does `common.VerilogDesign`, which takes
 the design from the selected file list or slang-server top level.
 
@@ -57,6 +57,15 @@ The order of the includes is the order in which actions appended to the same men
    applies, a brace matcher and quote handler.
 4. `META-INF/features/<feature>.xml` registering them, included from `plugin.xml`.
 5. A lexer test and a platform test for the file type, highlighting and commenting.
+
+## Builds before programming
+
+The openFPGALoader run configuration programs a bitstream after an optional build, a `common.BuildPlan`:
+a list of `BuildStep`s (command lines) run one after the other. `openfpgaloader.CommandBuild` runs the
+project's own command, such as `make`; `gowin.GowinBuild` is the built-in flow for Gowin FPGAs. Another
+FPGA family (iCE40 with `nextpnr-ice40` and `icepack`, ECP5 with `nextpnr-ecp5` and `ecppack`) would be a
+package like `gowin`: board presets, a `BuildPlan`, detection of its constraint files in
+`OpenFpgaLoaderProject.detect`, and a choice in `BuildMode`.
 
 ## Adding a tool
 

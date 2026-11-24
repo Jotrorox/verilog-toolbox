@@ -1,6 +1,8 @@
 package com.jotrorox.verilogtoolbox.openfpgaloader
 
 import com.intellij.util.execution.ParametersListUtil
+import com.jotrorox.verilogtoolbox.gowin.GowinBoard
+import com.jotrorox.verilogtoolbox.gowin.GowinProject
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.extension
@@ -381,7 +383,12 @@ internal data class FpgaProgramming(
     val buildCommand: String,
     /** Where the settings came from, such as `Makefile, rule load`, for the console. */
     val source: String?,
+    /** The built-in Gowin build, when the project has a constraint file and no Makefile builds the bitstream. */
+    val gowin: GowinBuildSettings? = null,
 )
+
+/** The built-in Gowin build as detected: [board] is null when the constraint file does not tell, [top] when no module was found. */
+internal data class GowinBuildSettings(val board: GowinBoard?, val constraints: Path, val top: String?)
 
 internal object OpenFpgaLoaderProject {
     private const val SCAN_DEPTH = 5
@@ -393,7 +400,9 @@ internal object OpenFpgaLoaderProject {
      * How to program [destination] in the project at [base]. [file] is a bitstream the user chose, which then
      * is the one programmed; its directory and those above it, up to [base], are where the Makefile is looked for.
      */
-    fun detect(base: Path, destination: FpgaDestination, file: Path? = null): FpgaProgramming {
+    fun detect(base: Path, destination: FpgaDestination, file: Path? = null, constraints: Path? = null): FpgaProgramming {
+        // A constraint file the user chose is built with the built-in build, whatever a Makefile says.
+        if (constraints != null) return gowin(base, destination, constraints, FpgaTarget(destination = destination))
         val makefilePath = findMakefile(base, file?.parent)
         val makefile = makefilePath?.let { path -> runCatching { Makefile.parse(Files.readString(path)) }.getOrNull() }
         val directory = makefilePath?.parent ?: base
@@ -417,7 +426,23 @@ internal object OpenFpgaLoaderProject {
         val source = makefilePath?.takeIf { invocation != null || buildCommand.isNotEmpty() }?.let { path ->
             relative(base, path) + (invocation?.let { ", rule ${it.target}" }.orEmpty())
         }
+        // Without a Makefile that builds or programs, a project with a constraint file is built by the plugin.
+        if (file == null && invocation == null && buildCommand.isEmpty()) {
+            GowinProject.constraintFiles(base).firstOrNull()?.let { return gowin(base, destination, it, target) }
+        }
         return FpgaProgramming(bitstream, target, buildCommand, source)
+    }
+
+    /** Programming with the built-in Gowin build of [constraints], to [GowinProject.OUTPUT_DIRECTORY]. */
+    private fun gowin(base: Path, destination: FpgaDestination, constraints: Path, target: FpgaTarget): FpgaProgramming {
+        val board = GowinProject.board(constraints)
+        val top = GowinProject.topModule(GowinProject.sources(base), constraints)
+        val bitstream = base.resolve(GowinProject.OUTPUT_DIRECTORY).resolve("${top ?: "top"}.fs")
+        val withBoard = target.copy(destination = destination, board = target.board.ifEmpty { board?.id.orEmpty() })
+        return FpgaProgramming(
+            bitstream, withBoard, "", "${relative(base, constraints)}, built-in Gowin build",
+            GowinBuildSettings(board, constraints, top),
+        )
     }
 
     private fun String?.resolvesTo(directory: Path, file: Path): Boolean =
