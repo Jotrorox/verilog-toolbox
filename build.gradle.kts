@@ -23,3 +23,12 @@ dependencies {
         // bundledPlugin("com.intellij.java")
     }
 }
+
+kotlin {
+    compilerOptions {
+        // Without this the compiler copies every default method of a platform interface we implement into our class
+        // (ToolWindowFactory's isApplicable, getAnchor, manage, ...), and the plugin verifier reports those copies as
+        // our own use of deprecated and experimental API.
+        jvmDefault.set(org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY)
+    }
+}

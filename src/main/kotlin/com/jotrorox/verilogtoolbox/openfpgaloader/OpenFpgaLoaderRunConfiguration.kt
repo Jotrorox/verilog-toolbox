@@ -50,7 +50,6 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
-import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.util.Ref
@@ -676,6 +675,9 @@ private class OpenFpgaLoaderSettingsEditor(private val project: Project) : Setti
     @Volatile
     private var details: Map<String, String> = emptyMap()
 
+    /** Set once the dialog is closed, so that lists loaded after that are dropped. */
+    private var disposed = false
+
     // Comments wrap at the width of the dialog: at their usual fixed width they make the form wider than the
     // dialog that edits a single configuration.
     private val panel: DialogPanel = panel {
@@ -784,7 +786,7 @@ private class OpenFpgaLoaderSettingsEditor(private val project: Project) : Setti
             val boards = OpenFpgaLoader.boards(tool)
             val cables = OpenFpgaLoader.cables(tool)
             ApplicationManager.getApplication().invokeLater({
-                if (Disposer.isDisposed(this)) return@invokeLater
+                if (disposed) return@invokeLater
                 details = boards.associate { it.name to it.details } + cables.associate { it.name to it.usbId.orEmpty() }
                 board.items = boards.map { it.name }
                 cable.items = cables.map { it.name }
@@ -815,6 +817,10 @@ private class OpenFpgaLoaderSettingsEditor(private val project: Project) : Setti
     }
 
     override fun createEditor(): JComponent = panel
+
+    override fun disposeEditor() {
+        disposed = true
+    }
 
     private companion object {
         const val LIST_WIDTH = 220

@@ -4,7 +4,6 @@ import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
@@ -107,7 +106,7 @@ internal object QuartusFiles {
     /** Opens [file] in the editor, at [line] counted from 1 when that is given. Does nothing for a file that is gone. */
     fun open(project: Project, file: Path, line: Int? = null) {
         val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(file)?.takeIf { !it.isDirectory } ?: return
-        if (line == null) FileEditorManager.getInstance(project).openFile(virtualFile, true)
-        else OpenFileDescriptor(project, virtualFile, maxOf(line - 1, 0), 0).navigate(true)
+        val descriptor = if (line == null) OpenFileDescriptor(project, virtualFile) else OpenFileDescriptor(project, virtualFile, maxOf(line - 1, 0), 0)
+        descriptor.navigate(true)
     }
 }
