@@ -12,5 +12,7 @@
                         implementationClass="com.jotrorox.verilogtoolbox.gowin.GowinCstCommenter"/>
         <lang.quoteHandler language="GowinCst"
                            implementationClass="com.jotrorox.verilogtoolbox.gowin.GowinCstQuoteHandler"/>
+        <externalAnnotator language="GowinCst"
+                           implementationClass="com.jotrorox.verilogtoolbox.gowin.GowinCstExternalAnnotator"/>
     </extensions>
 </idea-plugin>

@@ -77,6 +77,21 @@ object YosysSynthesis {
      * quotes, and the files the run writes are named relative to the directory it runs in.
      */
     internal fun run(design: FileList, top: String, target: SynthesisTarget, slang: Boolean): Run {
+        val read = read(design, top, slang)
+        val script = listOf(
+            read.script.trimEnd(),
+            "${target.command} -top $top",
+            "tee -q -o $STAT_FILE stat",
+            "tee -q -o $STAT_JSON_FILE stat -json",
+        ).joinToString("\n", postfix = "\n")
+        return Run(script, read.commandFile)
+    }
+
+    /**
+     * The start of a script that reads [design] and checks its hierarchy below [top], for any synthesis
+     * command to follow; with yosys-slang, also the command file it reads the design from.
+     */
+    internal fun read(design: FileList, top: String, slang: Boolean): Run {
         val read = if (slang) {
             "read_slang -f $COMMAND_FILE"
         } else {
@@ -92,14 +107,7 @@ object YosysSynthesis {
             // Yosys's front end has no library directories; hierarchy looks modules up as <module>.v there.
             if (!slang) for (directory in design.libraryDirectories) append(" -libdir ").append(quote(directory.toString()))
         }
-        val script = listOf(
-            read,
-            hierarchy,
-            "${target.command} -top $top",
-            "tee -q -o $STAT_FILE stat",
-            "tee -q -o $STAT_JSON_FILE stat -json",
-        ).joinToString("\n", postfix = "\n")
-        return Run(script, if (slang) commandFile(design, top) else null)
+        return Run(listOf(read, hierarchy).joinToString("\n", postfix = "\n"), if (slang) commandFile(design, top) else null)
     }
 
     /** A slang command file with the design: the same syntax as a project's `.f`, every path quoted. */

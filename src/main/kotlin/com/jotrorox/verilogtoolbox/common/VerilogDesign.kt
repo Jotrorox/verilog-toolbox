@@ -68,6 +68,6 @@ object VerilogDesign {
         val list = SlangDesign.getInstance(project).fileList ?: return standalone(file, directories)
         val design = FileList.parse(list, FileList.baseDirectory(list, project.basePath?.let { Path.of(it) }))
         val absolute = file.toAbsolutePath().normalize()
-        return if (absolute in design.sources) design else design.copy(sources = design.sources + absolute)
+        return if (absolute in design.sources) design else design.copy(sources = design.sources + listOf(absolute))
     }
 }

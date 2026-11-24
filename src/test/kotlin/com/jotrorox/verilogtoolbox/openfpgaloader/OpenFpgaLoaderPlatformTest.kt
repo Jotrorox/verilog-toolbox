@@ -60,7 +60,9 @@ class OpenFpgaLoaderPlatformTest : BasePlatformTestCase() {
     private fun program(
         tool: Path, bitstream: Path, target: FpgaTarget = FpgaTarget(board = "tangprimer25k"), build: String = "",
     ): Run {
-        val handler = OpenFpgaLoaderProcessHandler(tool, directory, bitstream, target, build, listOf(directory))
+        val handler = OpenFpgaLoaderProcessHandler(tool, directory, bitstream, target) {
+            build.takeIf { it.isNotEmpty() }?.let { CommandBuild(it, directory, listOf(directory)) }
+        }
         val text = StringBuilder()
         val stderr = StringBuilder()
         val warnings = StringBuilder()
@@ -293,9 +295,10 @@ class OpenFpgaLoaderPlatformTest : BasePlatformTestCase() {
         println(OpenFpgaLoader.describe(detection, programming.target))
         assertTrue(OpenFpgaLoader.describe(detection, programming.target), detection.devices.isNotEmpty())
 
-        val handler = OpenFpgaLoaderProcessHandler(
-            tool, projectDirectory, bitstream, programming.target, programming.buildCommand, listOf(tool.parent),
-        )
+        val configuration = configuration().also { it.apply(programming) }
+        val handler = OpenFpgaLoaderProcessHandler(tool, projectDirectory, bitstream, programming.target) {
+            configuration.buildPlan(projectDirectory, listOf(tool.parent))
+        }
         val text = StringBuilder()
         var exitCode = -1
         handler.addProcessListener(object : ProcessListener {

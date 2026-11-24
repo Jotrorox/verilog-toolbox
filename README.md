@@ -22,8 +22,10 @@ Verilog and SystemVerilog support for CLion.
   `.qsf` shared with every other tool
 - Program the FPGA with [openFPGALoader](https://github.com/trabucayre/openFPGALoader): build the bitstream,
   load it into SRAM or write it to flash, with the board and bitstream read from the project's Makefile
-- Highlighting and commenting for Gowin physical constraint files (`.cst`), as used by the Gowin EDA and by
-  nextpnr-himbaechel with apicula, for boards such as the Tang Nano and Tang Primer
+- One click from Verilog to a Gowin board without a Makefile: the plugin builds the bitstream with Yosys,
+  nextpnr-himbaechel and gowin_pack, with presets for the Sipeed Tang boards, and programs it
+- Highlighting and checks for Gowin physical constraint files (`.cst`): names that are no port of the top
+  module and ports without a pin are pointed out
 - Open waveforms in [GTKWave](https://gtkwave.sourceforge.net) or [Surfer](https://surfer-project.org);
   the viewer reloads after every re-run, and **Add to Waveform** in the editor shows the signal at the caret
   in it
@@ -143,13 +145,26 @@ gets the latest design. The build finds Yosys, nextpnr and the packers of the su
 also when they are not on your `PATH`. Without a Makefile the most recently built bitstream of the project is
 taken. A bitstream older than a source or constraint file is pointed out before it is programmed.
 
+**Gowin boards without a Makefile.** A project with Verilog sources and a `.cst` file, such as one for a
+Sipeed Tang Nano or Tang Primer, needs nothing else: **Load Bitstream into FPGA** builds it with Yosys's
+`synth_gowin`, nextpnr-himbaechel and gowin_pack, as apicula's examples do, and loads it. The board comes from
+the constraint file's name or first comment (`primer25k.cst`, `// Tang Nano 9K`), or is asked for once; the
+top module is the one whose ports the constraint file places; the sources are the project's Verilog files
+that are not testbenches, or a `.f` file list. The build goes to `build/gowin/`, is skipped when no source,
+constraint or setting changed, and ends with the maximum frequency of each clock. **Run 'Load …'** on a `.cst`
+file does the same for that file. Presets: Tang Nano, Nano 1K, 4K, 9K and 20K, Primer 20K and 25K, Mega 138K.
+
+In the `.cst` file, a name that is not a port of the top module, a bit out of the port's range and a port
+without an `IO_LOC` are underlined before the build would fail on them.
+
 **The console.** The progress bar fills up in one line, warnings are coloured, the build's `file:line`
 locations are links, and the run ends with what was programmed where. When programming fails it says what to
 do: a cable that is not found, udev rules on Linux and the WinUSB driver on Windows, a board openFPGALoader
 does not know, a bitstream built for another FPGA, write-protected flash and more.
 
 **The run configuration** has the bitstream, SRAM, flash or external flash with optional verification, the
-board (searchable among all boards openFPGALoader knows, with their cable and FPGA), the build command, and
+board (searchable among all boards openFPGALoader knows, with their cable and FPGA), how to build first
+(nothing, a command, or the built-in Gowin build with its board preset, constraints and top module), and
 under *Advanced* the cable, the FPGA part and further options such as `--freq` or `--ftdi-channel`.
 **Detect** next to the board, and **Tools | openFPGALoader | Detect FPGA**, show the USB probes that are
 plugged in and the FPGA the cable reaches, such as `Found Gowin GW5A-25 over board tangprimer25k. Probe:

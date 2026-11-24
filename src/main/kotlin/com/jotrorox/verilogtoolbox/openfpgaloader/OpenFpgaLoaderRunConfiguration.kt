@@ -66,19 +66,22 @@ import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.MAX_LINE_LENGTH_WORD_WRAP
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.layout.selectedValueMatches
-import com.intellij.util.EnvironmentUtil
 import com.intellij.util.execution.ParametersListUtil
 import com.intellij.util.ui.JBUI
+import com.jotrorox.verilogtoolbox.common.BuildPlan
+import com.jotrorox.verilogtoolbox.common.BuildStep
 import com.jotrorox.verilogtoolbox.common.OssCadSuite
+import com.jotrorox.verilogtoolbox.gowin.GowinBoard
+import com.jotrorox.verilogtoolbox.gowin.GowinBoards
+import com.jotrorox.verilogtoolbox.gowin.GowinBuild
+import com.jotrorox.verilogtoolbox.gowin.GowinBuildSpec
+import com.jotrorox.verilogtoolbox.gowin.GowinProject
 import com.jotrorox.verilogtoolbox.icarus.IcarusConsoleFilter
 import com.jotrorox.verilogtoolbox.quartus.QuartusConsole
 import com.jotrorox.verilogtoolbox.quartus.QuartusFilteringComboBox
 import com.jotrorox.verilogtoolbox.quartus.QuartusOutput
 import com.jotrorox.verilogtoolbox.settings.ToolchainSettings
 import com.jotrorox.verilogtoolbox.settings.VeribleConfigurable
-import com.jotrorox.verilogtoolbox.settings.findExecutableOnPath
-import com.jotrorox.verilogtoolbox.settings.findInstalledExecutable
-import java.io.File
 import java.io.OutputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -118,6 +121,33 @@ class OpenFpgaLoaderRunConfigurationOptions : LocatableRunConfigurationOptions()
     /** Run in the project directory before programming, so that the bitstream is up to date; empty for none. */
     var buildCommand by string("")
     var options by string("")
+
+    /**
+     * How the bitstream is built before programming: the name of a [BuildMode]. Empty in configurations from
+     * before there was a choice, which run [buildCommand] when it is set.
+     */
+    var buildMode by string("")
+
+    /** The built-in Gowin build: the [GowinBoard.id] of the board preset. */
+    var gowinBoard by string("")
+
+    /** The constraint file; a relative path starts at the project directory. */
+    var constraints by string("")
+
+    /** The top module; empty to find it at each run. */
+    var topModule by string("")
+
+    /** A `.f` file list with the design; empty for the project's Verilog sources. */
+    var fileList by string("")
+}
+
+/** What is done to the bitstream before it is programmed. */
+enum class BuildMode(private val displayName: String) {
+    NONE("Nothing, program it as it is"),
+    COMMAND("Run a command"),
+    GOWIN("Built-in Gowin build (Yosys, nextpnr, gowin_pack)");
+
+    override fun toString(): String = displayName
 }
 
 /** Programs a bitstream with openFPGALoader, after building it when a build command is set. */
@@ -133,9 +163,20 @@ class OpenFpgaLoaderRunConfiguration(project: Project, factory: ConfigurationFac
             settings.destination = value.name
         }
 
+    var buildMode: BuildMode
+        get() = BuildMode.entries.firstOrNull { it.name == settings.buildMode }
+            ?: if (settings.buildCommand.isNullOrBlank()) BuildMode.NONE else BuildMode.COMMAND
+        set(value) {
+            settings.buildMode = value.name
+        }
+
+    /** The board preset of the built-in build. */
+    val gowinBoard: GowinBoard? get() = GowinBoards.byId(settings.gowinBoard)
+
     val target: FpgaTarget
         get() = FpgaTarget(
-            board = settings.board.orEmpty().trim(),
+            // The built-in build's board preset knows openFPGALoader's name for the board.
+            board = settings.board.orEmpty().trim().ifEmpty { if (buildMode == BuildMode.GOWIN) gowinBoard?.id.orEmpty() else "" },
             cable = settings.cable.orEmpty().trim(),
             fpgaPart = settings.fpgaPart.orEmpty().trim(),
             destination = destination,
@@ -147,8 +188,31 @@ class OpenFpgaLoaderRunConfiguration(project: Project, factory: ConfigurationFac
         get() = project.basePath?.let { runCatching { Path.of(it) }.getOrNull() }
 
     /** The bitstream, whether it exists or not. */
-    fun bitstreamPath(): Path? = settings.bitstream?.takeIf { it.isNotBlank() }?.let { path ->
-        runCatching { (baseDirectory?.resolve(path.trim()) ?: Path.of(path.trim())).normalize() }.getOrNull()
+    fun bitstreamPath(): Path? = resolve(settings.bitstream)
+
+    fun constraintsPath(): Path? = resolve(settings.constraints)
+
+    private fun resolve(path: String?): Path? = path?.takeIf { it.isNotBlank() }?.let {
+        runCatching { (baseDirectory?.resolve(it.trim()) ?: Path.of(it.trim())).normalize() }.getOrNull()
+    }
+
+    /**
+     * How the bitstream is built before programming, or null when it is programmed as it is. The built-in
+     * build reads the project's files, so this is called off the UI thread.
+     */
+    @Throws(ExecutionException::class)
+    internal fun buildPlan(directory: Path, toolDirectories: List<Path>): BuildPlan? = when (buildMode) {
+        BuildMode.NONE -> null
+        BuildMode.COMMAND -> settings.buildCommand.orEmpty().trim().takeIf { it.isNotEmpty() }?.let { CommandBuild(it, directory, toolDirectories) }
+        BuildMode.GOWIN -> {
+            val board = gowinBoard ?: throw ExecutionException("Choose the board in the run configuration.")
+            val constraints = constraintsPath() ?: throw ExecutionException("Choose the constraint file in the run configuration.")
+            val bitstream = bitstreamPath() ?: throw ExecutionException("No bitstream is selected in the run configuration.")
+            val design = GowinBuild.design(directory, resolve(settings.fileList))
+            val top = settings.topModule.orEmpty().trim().ifEmpty { GowinProject.topModule(design.sources, constraints) }
+                ?: throw ExecutionException("No top module was found among the project's Verilog sources. Set it in the run configuration.")
+            GowinBuild.plan(GowinBuildSpec(board, top, constraints, design, directory.resolve(GowinProject.OUTPUT_DIRECTORY), bitstream))
+        }
     }
 
     /** Sets everything up as [programming] says. */
@@ -162,6 +226,15 @@ class OpenFpgaLoaderRunConfiguration(project: Project, factory: ConfigurationFac
         settings.verify = programming.target.verify
         settings.options = programming.target.options
         settings.buildCommand = programming.buildCommand
+        val gowin = programming.gowin
+        if (gowin != null) {
+            buildMode = BuildMode.GOWIN
+            settings.gowinBoard = gowin.board?.id.orEmpty()
+            settings.constraints = if (base != null) OpenFpgaLoaderProject.relative(base, gowin.constraints) else gowin.constraints.toString()
+            settings.topModule = gowin.top.orEmpty()
+        } else {
+            buildMode = if (programming.buildCommand.isEmpty()) BuildMode.NONE else BuildMode.COMMAND
+        }
     }
 
     override fun suggestedName(): String? = bitstreamPath()?.let { "${destination.verb} ${it.name}" }
@@ -180,8 +253,23 @@ class OpenFpgaLoaderRunConfiguration(project: Project, factory: ConfigurationFac
                     OpenFpgaLoader.BITSTREAM_EXTENSIONS.joinToString(", ") { ".$it" } + " files. Give the kind with --file-type in the options."
             )
         }
-        if (!Files.isRegularFile(file) && settings.buildCommand.isNullOrBlank()) {
-            throw RuntimeConfigurationWarning("'${file.name}' does not exist yet. Build it first, or set a build command that builds it.")
+        when (buildMode) {
+            BuildMode.NONE -> if (!Files.isRegularFile(file)) {
+                throw RuntimeConfigurationWarning("'${file.name}' does not exist yet. Build it first, or choose how it is built before programming.")
+            }
+            BuildMode.COMMAND -> if (settings.buildCommand.isNullOrBlank()) throw RuntimeConfigurationError("The build command is empty.")
+            BuildMode.GOWIN -> {
+                if (gowinBoard == null) throw RuntimeConfigurationError("Choose the board the built-in build is for.")
+                val constraints = constraintsPath() ?: throw RuntimeConfigurationError("Choose the constraint file (.cst) of the built-in build.")
+                if (!Files.isRegularFile(constraints)) throw RuntimeConfigurationError("The constraint file '${constraints.name}' does not exist.")
+                val missing = GowinBuild.tools().second
+                if (missing.isNotEmpty()) {
+                    throw RuntimeConfigurationError(
+                        "${missing.joinToString(", ")} ${if (missing.size == 1) "was" else "were"} not found. " +
+                            "Download the OSS CAD Suite in Settings | Tools | Verilog Toolbox, which has all of them."
+                    )
+                }
+            }
         }
         val board = settings.board.orEmpty().trim()
         val boards = OpenFpgaLoader.knownBoards(tool)
@@ -210,9 +298,9 @@ class OpenFpgaLoaderRunState(private val configuration: OpenFpgaLoaderRunConfigu
         val directory = project.basePath?.let { Path.of(it) } ?: bitstream.parent
         // The build finds the other tools of the suite openFPGALoader and Yosys come from, as `make` expects them on PATH.
         val toolDirectories = listOfNotNull(tool.parent, toolchain.findYosys()?.parent).distinct()
-        val handler = OpenFpgaLoaderProcessHandler(
-            tool, directory, bitstream, configuration.target, configuration.settings.buildCommand.orEmpty().trim(), toolDirectories,
-        )
+        val handler = OpenFpgaLoaderProcessHandler(tool, directory, bitstream, configuration.target) {
+            configuration.buildPlan(directory, toolDirectories)
+        }
         ProcessTerminatedListener.attach(handler)
         val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
         // Links the `file:line` locations of the build's messages, such as Yosys's and nextpnr's.
@@ -232,9 +320,8 @@ internal class OpenFpgaLoaderProcessHandler(
     private val directory: Path,
     private val bitstream: Path,
     private val target: FpgaTarget,
-    private val buildCommand: String,
-    /** Put first on PATH for the build. */
-    private val toolDirectories: List<Path>,
+    /** How the bitstream is built first, or null to program it as it is; asked on a background thread. */
+    private val buildPlan: () -> BuildPlan?,
 ) : ProcessHandler() {
     @Volatile
     private var process: OSProcessHandler? = null
@@ -248,22 +335,35 @@ internal class OpenFpgaLoaderProcessHandler(
     /** Text of a segment that has not ended yet, per stream. */
     private val pending = HashMap<Key<*>, StringBuilder>()
 
+    /** Whether the bitstream was built in this run, so that it needs no check for newer sources. */
+    @Volatile
+    private var built = false
+
     override fun startNotify() {
         super.startNotify()
-        ApplicationManager.getApplication().executeOnPooledThread { if (buildCommand.isNotEmpty()) build() else program() }
+        ApplicationManager.getApplication().executeOnPooledThread {
+            val steps = try {
+                buildPlan()?.steps(::print)
+            } catch (e: ExecutionException) {
+                print((e.message ?: e.toString()) + "\n", ProcessOutputTypes.STDERR)
+                return@executeOnPooledThread finish(1)
+            }
+            if (steps == null) program() else build(steps, 0)
+        }
     }
 
-    private fun build() {
-        val commandLine = try {
-            buildCommandLine()
-        } catch (e: ExecutionException) {
-            print((e.message ?: e.toString()) + "\n", ProcessOutputTypes.STDERR)
-            return finish(1)
+    /** Runs [steps] from [index] on, one after the other, and programs the bitstream when all have succeeded. */
+    private fun build(steps: List<BuildStep>, index: Int) {
+        if (index == steps.size) {
+            built = true
+            return program()
         }
-        print("Building: $buildCommand\n", ProcessOutputTypes.SYSTEM)
-        start(commandLine, loader = false) { exitCode ->
+        val step = steps[index]
+        print(step.description + "\n", ProcessOutputTypes.SYSTEM)
+        start(step.commandLine, loader = false) { exitCode ->
             if (exitCode == 0) {
-                program()
+                step.afterwards?.invoke()?.let { print(it + "\n", ProcessOutputTypes.STDOUT) }
+                build(steps, index + 1)
             } else {
                 if (!stopped) print("\nThe build failed (exit code $exitCode), so the FPGA was not programmed.\n", ProcessOutputTypes.STDERR)
                 finish(exitCode)
@@ -271,44 +371,19 @@ internal class OpenFpgaLoaderProcessHandler(
         }
     }
 
-    /** The build command, with its program looked up on the PATH that it runs with. */
-    @Throws(ExecutionException::class)
-    private fun buildCommandLine(): GeneralCommandLine {
-        val words = ParametersListUtil.parse(buildCommand)
-        val program = words.firstOrNull() ?: throw ExecutionException("The build command is empty.")
-        val path = (toolDirectories.map { it.toString() } + listOfNotNull(EnvironmentUtil.getValue("PATH")))
-            .distinct().joinToString(File.pathSeparator)
-        val executable = if ('/' in program || '\\' in program) {
-            directory.resolve(program).takeIf { Files.isExecutable(it) }
-        } else {
-            executableNames(program).firstNotNullOfOrNull { findExecutableOnPath(it, path) ?: findInstalledExecutable(it) }
-        } ?: throw ExecutionException(
-            "$program was not found, so the bitstream cannot be built." +
-                (if (program == "make" && SystemInfo.isWindows) " Install make, for example with MSYS2 or Chocolatey, or change the build command." else " Change the build command in the run configuration.")
-        )
-        return GeneralCommandLine(executable.toString())
-            .withParameters(words.drop(1))
-            .withWorkingDirectory(directory)
-            .withEnvironment("PATH", path)
-            .withCharset(Charsets.UTF_8)
-    }
-
-    private fun executableNames(program: String): List<String> =
-        if (SystemInfo.isWindows && '.' !in program) listOf("$program.exe", "$program.cmd", "$program.bat", program) else listOf(program)
-
     private fun program() {
         if (stopped) return finish(1)
         val name = bitstream.name
         if (!Files.isRegularFile(bitstream)) {
             print(
                 "$bitstream does not exist. " +
-                    (if (buildCommand.isEmpty()) "Build it first, or set a build command in the run configuration that builds it before programming.\n"
-                    else "The build command did not write it; check the bitstream in the run configuration.\n"),
+                    (if (!built) "Build it first, or choose in the run configuration how it is built before programming.\n"
+                    else "The build did not write it; check the bitstream in the run configuration.\n"),
                 ProcessOutputTypes.STDERR,
             )
             return finish(1)
         }
-        if (buildCommand.isEmpty()) {
+        if (!built) {
             OpenFpgaLoaderProject.newerSource(directory, bitstream)?.let { source ->
                 print(
                     "${OpenFpgaLoaderProject.relative(directory, source)} was changed after $name was built, so the FPGA gets " +
@@ -472,8 +547,8 @@ object OpenFpgaLoaderRunner {
         val name = programming.bitstream?.let { "${destination.verb} ${it.name}" } ?: "${destination.verb} FPGA"
         val settings = manager.createConfiguration(name, type)
         (settings.configuration as OpenFpgaLoaderRunConfiguration).apply(programming)
-        if (programming.bitstream == null) {
-            // Nothing to go by: the user says what to program.
+        if (programming.bitstream == null || programming.gowin?.board == null && programming.gowin != null) {
+            // Nothing to go by, or a constraint file that does not say its board: the user says what to program.
             if (!RunDialog.editConfiguration(project, settings, "Program FPGA")) return
         }
         manager.setTemporaryConfiguration(settings)
@@ -550,21 +625,36 @@ class OpenFpgaLoaderRunConfigurationProducer : LazyRunConfigurationProducer<Open
         context: ConfigurationContext,
         sourceElement: Ref<PsiElement>,
     ): Boolean {
-        val file = bitstream(context) ?: return false
+        val file = file(context) ?: return false
         val base = context.project.basePath?.let { Path.of(it) } ?: file.parent
+        if (isConstraints(file)) {
+            // A constraint file: build it with the built-in build, then load the bitstream.
+            val programming = OpenFpgaLoaderProject.detect(base, FpgaDestination.SRAM, constraints = file)
+            configuration.apply(programming)
+            configuration.name = "${FpgaDestination.SRAM.verb} ${programming.bitstream?.name ?: file.name}"
+            return true
+        }
+        if (!OpenFpgaLoader.isBitstream(file)) return false
         configuration.apply(OpenFpgaLoaderProject.detect(base, FpgaDestination.SRAM, file))
         configuration.name = "${FpgaDestination.SRAM.verb} ${file.name}"
         return true
     }
 
     override fun isConfigurationFromContext(configuration: OpenFpgaLoaderRunConfiguration, context: ConfigurationContext): Boolean {
-        val file = bitstream(context) ?: return false
-        return configuration.destination == FpgaDestination.SRAM && configuration.bitstreamPath()?.let { FileUtil.pathsEqual(it.toString(), file.toString()) } == true
+        val file = file(context) ?: return false
+        if (configuration.destination != FpgaDestination.SRAM) return false
+        val configured = if (isConstraints(file)) {
+            configuration.constraintsPath().takeIf { configuration.buildMode == BuildMode.GOWIN }
+        } else {
+            configuration.bitstreamPath()
+        }
+        return configured?.let { FileUtil.pathsEqual(it.toString(), file.toString()) } == true
     }
 
-    private fun bitstream(context: ConfigurationContext): Path? =
+    private fun file(context: ConfigurationContext): Path? =
         context.location?.virtualFile?.takeIf { !it.isDirectory && it.isInLocalFileSystem }?.toNioPath()?.normalize()
-            ?.takeIf { OpenFpgaLoader.isBitstream(it) }
+
+    private fun isConstraints(file: Path): Boolean = file.name.endsWith(".cst", ignoreCase = true)
 }
 
 private class OpenFpgaLoaderSettingsEditor(private val project: Project) : SettingsEditor<OpenFpgaLoaderRunConfiguration>() {
@@ -572,7 +662,12 @@ private class OpenFpgaLoaderSettingsEditor(private val project: Project) : Setti
     private lateinit var destination: ComboBox<FpgaDestination>
     private lateinit var verify: JBCheckBox
     private lateinit var board: QuartusFilteringComboBox
+    private lateinit var buildMode: ComboBox<BuildMode>
     private lateinit var buildCommand: JBTextField
+    private lateinit var gowinBoard: ComboBox<GowinBoard?>
+    private lateinit var constraints: TextFieldWithBrowseButton
+    private lateinit var topModule: JBTextField
+    private lateinit var fileList: TextFieldWithBrowseButton
     private lateinit var cable: QuartusFilteringComboBox
     private lateinit var fpgaPart: JBTextField
     private lateinit var options: JBTextField
@@ -605,13 +700,46 @@ private class OpenFpgaLoaderSettingsEditor(private val project: Project) : Setti
             WRAP,
         )
         row("Build first:") {
+            buildMode = comboBox(BuildMode.entries).component
+        }
+        row("Command:") {
             buildCommand = textField().align(AlignX.FILL)
                 .comment(
                     "Run in the project directory before programming, so that the FPGA gets the latest design, such as " +
-                        "<code>make build/top.fs</code>. Leave empty to program the file as it is.",
+                        "<code>make build/top.fs</code>.",
                     WRAP,
                 ).component
-        }
+        }.visibleIf(buildMode.selectedValueMatches { it == BuildMode.COMMAND })
+        indent {
+            row("Board:") {
+                gowinBoard = comboBox(listOf<GowinBoard?>(null) + GowinBoards.ALL).align(AlignX.FILL)
+                    .comment("Sets the FPGA for Yosys, nextpnr and gowin_pack, and the board for openFPGALoader when none is set above.", WRAP)
+                    .component
+            }
+            row("Constraints:") {
+                constraints = textFieldWithBrowseButton(
+                    FileChooserDescriptorFactory.singleFile().withExtensionFilter("cst").withTitle("Select Constraint File"), project,
+                ).align(AlignX.FILL).comment("The .cst file with the pins of the top module's ports.", WRAP).component
+            }
+            row("Top module:") {
+                topModule = textField().align(AlignX.FILL)
+                    .comment("Leave empty to take the module whose ports the constraint file places.", WRAP).component
+            }
+            row("File list:") {
+                fileList = textFieldWithBrowseButton(
+                    FileChooserDescriptorFactory.singleFile().withTitle("Select File List"), project,
+                ).align(AlignX.FILL)
+                    .comment("A .f file with the design. Leave empty to build every Verilog file of the project that is not a testbench.", WRAP)
+                    .component
+            }
+            row {
+                comment(
+                    "Builds into <code>${GowinProject.OUTPUT_DIRECTORY}</code>, and only when a source, the constraints or these settings " +
+                        "changed since the last build.",
+                    WRAP,
+                )
+            }
+        }.visibleIf(buildMode.selectedValueMatches { it == BuildMode.GOWIN })
         collapsibleGroup("Advanced") {
             row("Cable:") {
                 cable = cell(QuartusFilteringComboBox()).align(AlignX.FILL).comment("Overrides the cable of the board.", WRAP).component
@@ -699,7 +827,12 @@ private class OpenFpgaLoaderSettingsEditor(private val project: Project) : Setti
         destination.selectedItem = configuration.destination
         verify.isSelected = settings.verify
         board.text = settings.board.orEmpty()
+        buildMode.selectedItem = configuration.buildMode
         buildCommand.text = settings.buildCommand.orEmpty()
+        gowinBoard.selectedItem = configuration.gowinBoard
+        constraints.text = settings.constraints.orEmpty()
+        topModule.text = settings.topModule.orEmpty()
+        fileList.text = settings.fileList.orEmpty()
         cable.text = settings.cable.orEmpty()
         fpgaPart.text = settings.fpgaPart.orEmpty()
         options.text = settings.options.orEmpty()
@@ -711,7 +844,12 @@ private class OpenFpgaLoaderSettingsEditor(private val project: Project) : Setti
         configuration.destination = destination.selectedItem as? FpgaDestination ?: FpgaDestination.SRAM
         settings.verify = verify.isSelected
         settings.board = board.text.trim()
+        configuration.buildMode = buildMode.selectedItem as? BuildMode ?: BuildMode.NONE
         settings.buildCommand = buildCommand.text.trim()
+        settings.gowinBoard = (gowinBoard.selectedItem as? GowinBoard)?.id.orEmpty()
+        settings.constraints = constraints.text.trim()
+        settings.topModule = topModule.text.trim()
+        settings.fileList = fileList.text.trim()
         settings.cable = cable.text.trim()
         settings.fpgaPart = fpgaPart.text.trim()
         settings.options = options.text.trim()
