@@ -17,6 +17,8 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.LspClientManager
+import com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaDesign
+import com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaProjectService
 import com.jotrorox.verilogtoolbox.quartus.QuartusDesign
 import com.jotrorox.verilogtoolbox.quartus.QuartusProjectService
 import com.jotrorox.verilogtoolbox.settings.ToolchainSettings
@@ -50,12 +52,19 @@ class SlangDesign(private val project: Project) :
 
     /**
      * The selected file list, or null when none is selected or it no longer exists. For a design read from
-     * a Quartus settings file it is the list written from that, which may be written here.
+     * a Quartus settings file or a GOWIN EDA project it is the list written from that, which may be written here.
      */
     val fileList: Path?
         get() = state.takeIf { it.buildFile && it.path.isNotEmpty() }
             ?.let { runCatching { Path.of(it.path) }.getOrNull() }?.takeIf { Files.isRegularFile(it) }
-            ?.let { if (QuartusDesign.isSettingsFile(it.toString())) QuartusDesign.fileList(project, it) else it }
+            ?.let { generatedFileList(it) }
+
+    /** The file list of [file]: itself, or the one written from a Quartus or GOWIN EDA project. */
+    private fun generatedFileList(file: Path): Path? = when {
+        QuartusDesign.isSettingsFile(file.toString()) -> QuartusDesign.fileList(project, file)
+        GowinEdaDesign.isProjectFile(file.toString()) -> GowinEdaDesign.fileList(project, file)
+        else -> file
+    }
 
     fun select(file: VirtualFile) {
         updateState { State(file.path, file.isBuildFile()) }
@@ -79,9 +88,9 @@ class SlangDesign(private val project: Project) :
         val clients = LspClientManager.getInstance(project).getClients(SlangLspIntegrationProvider::class.java)
         if (clients.isEmpty()) return
         ApplicationManager.getApplication().executeOnPooledThread {
-            // The server reads a file list; of a Quartus project that is the one written from its settings.
-            val path = if (selection.buildFile && QuartusDesign.isSettingsFile(selection.path)) {
-                QuartusDesign.fileList(project, Path.of(selection.path))?.toString().orEmpty()
+            // The server reads a file list; of a Quartus or GOWIN EDA project that is the one written from it.
+            val path = if (selection.buildFile && selection.path.isNotEmpty()) {
+                generatedFileList(Path.of(selection.path))?.toString().orEmpty()
             } else {
                 selection.path
             }
@@ -104,10 +113,12 @@ class SlangDesign(private val project: Project) :
     }
 }
 
-/** A file list for the slang driver, such as `compile.f`, or the Quartus settings file one is written from. */
-private fun VirtualFile.isBuildFile(): Boolean = extension?.lowercase().let { it == "f" || it == "qsf" }
+/** A file list for the slang driver, such as `compile.f`, or the Quartus settings or GOWIN EDA project one is written from. */
+private fun VirtualFile.isBuildFile(): Boolean = extension?.lowercase().let { it == "f" || it == "qsf" || it == "gprj" }
 
 private fun VirtualFile.isQuartusSettings(): Boolean = extension?.lowercase() == "qsf"
+
+private fun VirtualFile.isGowinProject(): Boolean = extension?.lowercase() == "gprj"
 
 /**
  * The file a design can be selected from. A file list is offered even while slang-server is switched
@@ -131,6 +142,7 @@ class SlangSelectDesignAction : DumbAwareAction() {
         if (file != null) {
             e.presentation.text = when {
                 file.isQuartusSettings() -> "Use Quartus Project as Design"
+                file.isGowinProject() -> "Use GOWIN EDA Project as Design"
                 file.isBuildFile() -> "Use as Design File List"
                 else -> "Set as slang-server Top Level"
             }
@@ -144,7 +156,7 @@ class SlangSelectDesignAction : DumbAwareAction() {
         NotificationGroupManager.getInstance().getNotificationGroup("Verilog Toolbox")
             .createNotification(
                 when {
-                    file.isQuartusSettings() ->
+                    file.isQuartusSettings() || file.isGowinProject() ->
                         "slang-server, Verilator lint, Check Synthesis and Icarus Verilog runs now use the sources of ${file.name}."
                     file.isBuildFile() -> "slang-server and Icarus Verilog runs now use the design listed in ${file.name}."
                     else -> "slang-server now elaborates the design below ${file.name}."
@@ -166,6 +178,7 @@ class SlangClearDesignAction : DumbAwareAction() {
             val design = SlangDesign.getInstance(project)
             e.presentation.text = when {
                 QuartusDesign.isSettingsFile(design.path) -> "Stop Using Quartus Project as Design"
+                GowinEdaDesign.isProjectFile(design.path) -> "Stop Using GOWIN EDA Project as Design"
                 design.isFileList -> "Clear Design File List"
                 else -> "Clear slang-server Top Level"
             }
@@ -174,8 +187,12 @@ class SlangClearDesignAction : DumbAwareAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        // A Quartus project is made the design on its own, so that it is not wanted has to be remembered.
-        if (QuartusDesign.isSettingsFile(SlangDesign.getInstance(project).path)) QuartusProjectService.getInstance(project).declineDesign()
-        else SlangDesign.getInstance(project).clear()
+        // A Quartus or GOWIN EDA project is made the design on its own, so that it is not wanted has to be remembered.
+        val path = SlangDesign.getInstance(project).path
+        when {
+            QuartusDesign.isSettingsFile(path) -> QuartusProjectService.getInstance(project).declineDesign()
+            GowinEdaDesign.isProjectFile(path) -> GowinEdaProjectService.getInstance(project).declineDesign()
+            else -> SlangDesign.getInstance(project).clear()
+        }
     }
 }
