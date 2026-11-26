@@ -1,0 +1,13 @@
+SBY 19:11:24 [broken_bmc] Removing directory 'C:\work\formal\broken_bmc'.
+SBY 19:11:24 [broken_bmc] Copy 'C:\work\formal\rtl\broken.sv' to 'C:\work\formal\broken_bmc\src\broken.sv'.
+SBY 19:11:24 [broken_bmc] engine_0: smtbmc yices
+SBY 19:11:24 [broken_bmc] base: starting process "cd broken_bmc/src& yosys -ql ../model/design.log ../model/design.ys"
+SBY 19:11:24 [broken_bmc] base: broken.sv:11: ERROR: syntax error, unexpected TOK_LOGIC
+SBY 19:11:24 [broken_bmc] base: finished (returncode=1)
+SBY 19:11:24 [broken_bmc] base: task failed. ERROR.
+SBY 19:11:24 [broken_bmc] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 19:11:24 [broken_bmc] summary: Elapsed process time unvailable on Windows
+SBY 19:11:24 [broken_bmc] summary: engine_0 (smtbmc yices) did not return a status
+SBY 19:11:24 [broken_bmc] summary: engine_0 did not produce any traces
+SBY 19:11:24 [broken_bmc] DONE (ERROR, rc=16)
+SBY 19:11:24 The following tasks failed: ['bmc']

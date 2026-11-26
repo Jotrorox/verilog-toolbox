@@ -6,7 +6,7 @@
 
     <description><![CDATA[
         <p>Verilog and SystemVerilog support for CLion: slang-server code insight, Verilator lint and simulation, Icarus Verilog
-        testbenches in the test runner, a testbench generator, Yosys synthesis checks, GTKWave or Surfer
+        testbenches and SymbiYosys formal verification in the test runner, a testbench generator, Yosys synthesis checks, GTKWave or Surfer
         waveforms, Quartus Prime projects and FPGA programming with openFPGALoader, with the open source tools
         downloadable as the OSS CAD Suite.</p>
         <ul>
@@ -19,6 +19,8 @@
                 the Verilated model, built with CMake into a project CLion loads to build, run and debug them</li>
             <li>Generate Testbench for a module: instance, clock, reset and waveform dump already written</li>
             <li>Check Synthesis with Yosys, for generic gates or iCE40, ECP5, Gowin and Xilinx 7-series</li>
+            <li>Formal verification with SymbiYosys: <code>.sby</code> files highlighted, each task run from the gutter
+                as a test that passes or fails, and the counterexample opened in GTKWave or Surfer</li>
             <li>Quartus Prime without its window: compile, program the device, assign pins and read the timing
                 and resource reports, with the design of the <code>.qsf</code> shared with the other tools</li>
             <li>Program the FPGA with openFPGALoader: build the bitstream, load it into SRAM or write it to flash, with
@@ -61,6 +63,7 @@
     <xi:include href="/META-INF/features/waveform.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="/META-INF/features/verilator.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="/META-INF/features/yosys.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="/META-INF/features/sby.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="/META-INF/features/quartus.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="/META-INF/features/openfpgaloader.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="/META-INF/features/gowin.xml" xpointer="xpointer(/idea-plugin/*)"/>

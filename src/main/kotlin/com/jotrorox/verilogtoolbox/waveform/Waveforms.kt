@@ -327,7 +327,7 @@ object Waveforms {
             .notify(project)
     }
 
-    private fun notify(project: Project, title: String, content: String, type: NotificationType) {
+    internal fun notify(project: Project, title: String, content: String, type: NotificationType) {
         NotificationGroupManager.getInstance().getNotificationGroup("Verilog Toolbox")
             .createNotification(title, content, type).notify(project)
     }

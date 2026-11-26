@@ -26,6 +26,7 @@ All under `src/main/kotlin/com/jotrorox/verilogtoolbox/`:
 | `waveform`       | GTKWave and Surfer                                                                         |
 | `verilator`      | Verilator lint, and simulation built with CMake                                            |
 | `yosys`          | Check Synthesis with Yosys                                                                 |
+| `sby`            | SymbiYosys: the `.sby` language, its run configuration and the tasks in the test runner    |
 | `quartus`        | Quartus Prime: projects, runs, pins, reports, the tool window                              |
 | `quartus.tcl`    | The Tcl dialect of `.qsf`, `.qpf`, `.qip` and `.sdc` files                                 |
 | `openfpgaloader` | Programming FPGAs with openFPGALoader                                                      |
@@ -36,7 +37,8 @@ Tests mirror the same packages under `src/test/kotlin/`. Plain unit tests are na
 the IntelliJ platform `…PlatformTest`.
 
 `verilog` depends on no other package of the plugin, and new features should only depend on `verilog`,
-`common` and `settings`, or on a family package such as `gowin` for the build they offer, as `openfpgaloader` does. `settings` is the exception the other way round: the settings page brings the options
+`common` and `settings`, or on a family package such as `gowin` for the build they offer, as `openfpgaloader` does,
+or on `waveform` for showing a waveform, as `icarus` and `sby` do. `settings` is the exception the other way round: the settings page brings the options
 of every tool together, so it knows the feature packages, and so does `common.VerilogDesign`, which takes
 the design from the selected file list or slang-server top level.
 
@@ -81,8 +83,8 @@ Icarus Verilog and Verilator share the test runner of `icarus`: a run is a `Simu
 `SimulationTest`s, each a list of `SimulationStep`s (command lines) whose last one is the simulation and whose
 output a `SimulationOutput` reads (`IcarusTestOutput`, `VerilatorTestOutput`). `VerilogTestbenches` and
 `VerilogTestLocator` find testbenches and lead tree nodes back to them. The waveform viewers take any
-`waveform.WaveformSource`, which both run configurations are. These pieces could move to a package of their own
-should a third simulator come.
+`waveform.WaveformSource`, which both run configurations are, and so is a formal task of `sby` for its traces.
+These pieces could move to a package of their own should a third simulator come.
 
 A Verilator simulation is built without Verilator's Makefiles and `verilator-config.cmake`, which need `make`,
 Python or Perl. `VerilatorSimulation` runs `verilator --cc --make json` (`--make cmake` before 5.030), and
