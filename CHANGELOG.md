@@ -6,6 +6,11 @@
 
 ### Added
 
+- A viewer for Quartus reports (`.rpt`) and pin-out files (`.pin`): the sections listed and grouped, with a
+  search of titles and contents; tables that sort numerically and filter, with hierarchies set in, a gauge
+  for the resources used and negative slack in red; messages by severity that go to the source; whether the
+  step succeeded or timing is met at the top. The text is one click away, alone or next to the viewer
+
 - One-click programming of Gowin boards without a Makefile: a project with a `.cst` file is built by the
   plugin with Yosys, nextpnr-himbaechel and gowin_pack from the OSS CAD Suite, then loaded or flashed with
   openFPGALoader. The board, the top module and the sources are found by themselves; the build is skipped
@@ -26,6 +31,8 @@
 
 - Verilator lint and Check Synthesis of a file outside the selected file list added the parts of its path
   to the design instead of the file
+- Reports with a `°` in them, written by Quartus on Windows in its code page, were not read: the tool window
+  left out all of the Fitter's messages. They open with the right characters in the editor too
 
 ### Changed
 

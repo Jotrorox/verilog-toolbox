@@ -11,6 +11,8 @@
         <fileType name="Quartus Report" fieldName="INSTANCE"
                   implementationClass="com.jotrorox.verilogtoolbox.quartus.tcl.QuartusTclReportFileType"
                   patterns="*.map.rpt;*.syn.rpt;*.fit.rpt;*.asm.rpt;*.sta.rpt;*.flow.rpt;*.eda.rpt;*.pow.rpt;*.drc.rpt;*.pgm.rpt;*.map.summary;*.syn.summary;*.fit.summary;*.sta.summary;*.pow.summary;*.map.smsg;*.fit.smsg;*.sta.smsg;*.pin"/>
+        <!-- Reports and pin-out files open in a viewer of their sections, with the text one click away. -->
+        <fileEditorProvider implementation="com.jotrorox.verilogtoolbox.quartus.QuartusReportEditorProvider"/>
         <lang.parserDefinition language="QuartusTcl"
                                implementationClass="com.jotrorox.verilogtoolbox.quartus.tcl.QuartusTclParserDefinition"/>
         <lang.syntaxHighlighterFactory language="QuartusTcl"

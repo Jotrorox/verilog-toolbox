@@ -336,7 +336,7 @@ internal class QuartusOverviewPanel(private val project: Project) : SimpleToolWi
                     comment("${slack.clock}, ${slack.corner}")
                 }
             }
-            row { link("Timing report") { QuartusFiles.open(project, compilation.report("sta.rpt") ?: return@link) } }
+            row { link("Timing report") { openQuartusReport(project, compilation.report("sta.rpt") ?: return@link, "Fmax Summary") } }
         }
     }
 
@@ -517,19 +517,48 @@ internal class QuartusMessagesPanel(private val project: Project) : SimpleToolWi
             tree: JTree, value: Any?, selected: Boolean, expanded: Boolean, leaf: Boolean, row: Int, hasFocus: Boolean,
         ) {
             val message = (value as? DefaultMutableTreeNode)?.userObject as? QuartusMessage ?: return
-            icon = when (message.severity) {
-                QuartusSeverity.ERROR -> AllIcons.General.Error
-                QuartusSeverity.CRITICAL_WARNING -> AllIcons.General.BalloonWarning
-                QuartusSeverity.WARNING -> AllIcons.General.Warning
-                QuartusSeverity.INFO, QuartusSeverity.EXTRA_INFO -> AllIcons.General.Information
-            }
-            append(message.text)
-            message.file?.let { file ->
-                val name = file.replace('\\', '/').substringAfterLast('/')
-                append("  $name" + (message.line?.let { ":$it" } ?: ""), SimpleTextAttributes.LINK_ATTRIBUTES)
-            }
-            message.code?.let { append("  ($it)", SimpleTextAttributes.GRAYED_ATTRIBUTES) }
-            toolTipText = message.text
+            QuartusMessageCell.render(this, message)
         }
+    }
+}
+
+/** How a message is shown in a tree: its icon, its text, where it is and its number. */
+internal object QuartusMessageCell {
+    fun icon(severity: QuartusSeverity): Icon = when (severity) {
+        QuartusSeverity.ERROR -> AllIcons.General.Error
+        QuartusSeverity.CRITICAL_WARNING -> AllIcons.General.BalloonWarning
+        QuartusSeverity.WARNING -> AllIcons.General.Warning
+        QuartusSeverity.INFO, QuartusSeverity.EXTRA_INFO -> AllIcons.General.Information
+    }
+
+    /** Fills [cell] with [message]; [highlight] is marked in its text where it appears. */
+    fun render(cell: ColoredTreeCellRenderer, message: QuartusMessage, highlight: String = "") {
+        cell.icon = icon(message.severity)
+        appendHighlighted(cell, message.text, highlight, SimpleTextAttributes.REGULAR_ATTRIBUTES)
+        message.file?.let { file ->
+            val name = file.replace('\\', '/').substringAfterLast('/')
+            cell.append("  ")
+            cell.append(name + (message.line?.let { ":$it" } ?: ""), SimpleTextAttributes.LINK_ATTRIBUTES)
+        }
+        message.code?.let { cell.append("  ($it)", SimpleTextAttributes.GRAYED_ATTRIBUTES) }
+        cell.toolTipText = message.text
+    }
+
+    /** Appends [text] to [cell], each appearance of [highlight] marked as a search match. */
+    fun appendHighlighted(cell: com.intellij.ui.SimpleColoredComponent, text: String, highlight: String, attributes: SimpleTextAttributes) {
+        if (highlight.isEmpty()) {
+            cell.append(text, attributes)
+            return
+        }
+        val match = SimpleTextAttributes(attributes.style or SimpleTextAttributes.STYLE_SEARCH_MATCH, attributes.fgColor)
+        var from = 0
+        while (true) {
+            val at = text.indexOf(highlight, from, ignoreCase = true)
+            if (at < 0) break
+            if (at > from) cell.append(text.substring(from, at), attributes)
+            cell.append(text.substring(at, at + highlight.length), match)
+            from = at + highlight.length
+        }
+        if (from < text.length) cell.append(text.substring(from), attributes)
     }
 }

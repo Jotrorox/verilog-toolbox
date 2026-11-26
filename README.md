@@ -105,6 +105,14 @@ shown. Two ports on one pin are marked.
 **Messages.** The *Messages* tab has the messages of the last run by severity, with their details below them;
 double-click goes to the source. Before a run in the IDE it shows those of the reports, whoever compiled.
 
+**Reports.** The reports (`.rpt`) and the pin-out file (`.pin`) open in a viewer of their sections instead of
+as walls of text. The sections are listed on the left, the operating corners of timing, state machines and
+the parameters of each instance grouped, and a search there finds what you type in titles and contents
+alike. Tables sort by any column, numbers as numbers, and filter as you type; the hierarchy of an entity is
+set in, resources used get a gauge, failures and negative slack are red. The messages are filtered by
+severity, and a double-click goes to the source. The title says whether the step succeeded or timing is met.
+*Show in text*, or the buttons at the top right of the editor, show the report's text next to it or alone.
+
 **The project.** **New Quartus Project…** writes a `.qpf` and `.qsf` for a device chosen from the ones your
 Quartus has installed, with the project's Verilog sources and, if you like, an `.sdc` with a clock constraint.
 **Add to / Remove from Quartus Project** and **Set as Quartus Top-Level Entity** are in the context menu of
