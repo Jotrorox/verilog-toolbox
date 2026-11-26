@@ -23,12 +23,12 @@ import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
-import com.jotrorox.verilogtoolbox.icarus.IcarusRunConfiguration
 import com.jotrorox.verilogtoolbox.settings.ToolchainSettings
 import com.jotrorox.verilogtoolbox.settings.VeribleConfigurable
 import java.io.Closeable
 import java.io.IOException
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.nio.file.Files
@@ -41,6 +41,20 @@ import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.io.path.name
 import kotlin.io.path.nameWithoutExtension
+
+/** A simulation run whose waveform a viewer shows: Icarus Verilog's or Verilator's run configuration. */
+interface WaveformSource {
+    fun getProject(): Project
+
+    /** The testbench's source, next to which the layout of its waveform is kept. */
+    val testbenchFile: Path?
+
+    /** The simulated module, which names the layout and leads Add to Waveform to the instances. */
+    fun resolveTopModule(): String?
+
+    /** The scope of the testbench in the dump, shown in a first layout: Verilator puts everything below `TOP`. */
+    fun waveformScope(): String? = resolveTopModule()
+}
 
 /** A waveform viewer that "Open Waveform" can launch. */
 enum class WaveformViewer(
@@ -92,6 +106,12 @@ object Waveforms {
     /** Whether a Surfer executable knows `--wcp-initiate`, which Surfer 0.4 introduced; asked once. */
     private val surferTakesCommands = ConcurrentHashMap<Path, Boolean>()
 
+    /** How a GTKWave executable can be told to reload, which differs between GTKWave 3 and 4; asked once. */
+    private val gtkwaveControls = ConcurrentHashMap<Path, GtkwaveKind>()
+
+    /** GTKWave 4 takes commands over WCP, GTKWave 3 through a Tcl script, and either may have been built without. */
+    internal enum class GtkwaveKind { WCP, TCL, NONE }
+
     /** The range of the dump file's name in a line of simulation output, if the line announces one. */
     internal fun dumpFileRange(line: String): IntRange? = DUMP_OPENED.find(line.trimEnd())?.groups?.get(1)?.range
 
@@ -107,28 +127,39 @@ object Waveforms {
      * last as long as the application, so that it stands for the viewer like a command would.
      */
     internal fun commandLine(executable: Path, arguments: List<String>): GeneralCommandLine =
-        if (executable.name.endsWith(".app") && Files.isDirectory(executable)) {
+        if (isApplication(executable)) {
             GeneralCommandLine("open", "-n", "-W", "-a", executable.toString(), "--args").withParameters(arguments)
         } else {
-            GeneralCommandLine(executable.toString()).withParameters(arguments)
+            // The OSS CAD Suite's GTKWave finds the GTK libraries in the suite's lib only with it on PATH on Windows.
+            ToolchainSettings.toolCommandLine(executable).withParameters(arguments)
         }
+
+    private fun isApplication(executable: Path): Boolean = executable.name.endsWith(".app") && Files.isDirectory(executable)
+
+    /** Which control GTKWave's `--help` offers: `--wcp` in GTKWave 4, `--repscript` in GTKWave 3. */
+    internal fun gtkwaveKind(help: String): GtkwaveKind = when {
+        "--wcp" in help -> GtkwaveKind.WCP
+        "--repscript" in help -> GtkwaveKind.TCL
+        else -> GtkwaveKind.NONE
+    }
 
     /**
      * The commands that give Surfer its first layout: the signals of the testbench, saved to [layout] at
      * once. Surfer then knows the file as its state file and saves later changes to it. Null if the path
-     * cannot be written in a command file, where `;` and `#` end a command.
+     * cannot be written in a command file, where `;` and `#` end a command. [scope] is the testbench's
+     * hierarchical name in the dump, such as `counter_tb` or `TOP.counter_tb`.
      */
-    internal fun surferSeed(layout: Path, topModule: String?): String? {
+    internal fun surferSeed(layout: Path, scope: String?): String? {
         val path = layout.toAbsolutePath().toString()
         if (path.any { it == ';' || it == '#' || it == '\n' || it == '\r' } || path != path.trim()) return null
         // A scope that the dump does not have is only warned about.
-        val scope = topModule?.takeIf { SIMPLE_IDENTIFIER.matches(it) }
-        return listOfNotNull(scope?.let { "scope_add $it" }, "save_state_as $path").joinToString("\n", postfix = "\n")
+        val added = scope?.takeIf { HIERARCHICAL_NAME.matches(it) }
+        return listOfNotNull(added?.let { "scope_add $it" }, "save_state_as $path").joinToString("\n", postfix = "\n")
     }
 
     /** Opens [dump], written by a run of [configuration], with the layout saved for its testbench. */
-    fun open(configuration: IcarusRunConfiguration, dump: Path?) {
-        val project = configuration.project
+    fun open(configuration: WaveformSource, dump: Path?) {
+        val project = configuration.getProject()
         ApplicationManager.getApplication().executeOnPooledThread {
             if (dump == null) {
                 return@executeOnPooledThread notify(
@@ -178,7 +209,7 @@ object Waveforms {
                         start(open.configuration, dump)
                     }
                 })
-                .notify(open.configuration.project)
+                .notify(open.configuration.getProject())
         }
     }
 
@@ -196,8 +227,8 @@ object Waveforms {
         open.handler.waitFor(STOP_TIMEOUT_MILLIS)
     }
 
-    private fun start(configuration: IcarusRunConfiguration, dump: Path) {
-        val project = configuration.project
+    private fun start(configuration: WaveformSource, dump: Path) {
+        val project = configuration.getProject()
         val (viewer, executable) = ToolchainSettings.getInstance().findWaveformViewer()
             ?: return notifyMissingViewer(project)
         val topModule = configuration.resolveTopModule()
@@ -208,7 +239,7 @@ object Waveforms {
             null // The viewer still shows the dump, it only cannot be told to reload it.
         }
         val arguments = control?.arguments.orEmpty() + viewer.arguments(dump, layout) +
-            if (viewer == WaveformViewer.SURFER && !Files.isRegularFile(layout)) seedArguments(layout, topModule) else emptyList()
+            if (viewer == WaveformViewer.SURFER && !Files.isRegularFile(layout)) seedArguments(layout, configuration.waveformScope()) else emptyList()
         synchronized(running) {
             // Started in the meantime by another request.
             if (running[dump]?.handler?.isProcessTerminated == false) return control?.close() ?: Unit
@@ -253,19 +284,27 @@ object Waveforms {
 
     @Throws(IOException::class)
     private fun control(viewer: WaveformViewer, executable: Path): ViewerControl? = when (viewer) {
-        WaveformViewer.GTKWAVE -> GtkwaveControl()
-        WaveformViewer.SURFER -> if (surferTakesCommands.computeIfAbsent(executable, ::takesCommands)) SurferControl() else null
+        WaveformViewer.GTKWAVE -> when (gtkwaveControls.computeIfAbsent(executable, ::gtkwaveKind)) {
+            GtkwaveKind.WCP -> GtkwaveWcpControl()
+            GtkwaveKind.TCL -> GtkwaveControl()
+            GtkwaveKind.NONE -> null
+        }
+        WaveformViewer.SURFER -> if (surferTakesCommands.computeIfAbsent(executable) { "--wcp-initiate" in help(it) }) SurferControl() else null
     }
 
-    private fun takesCommands(surfer: Path): Boolean =
+    /** An application bundle on macOS cannot be asked; those are GTKWave 3 builds, which have Tcl. */
+    private fun gtkwaveKind(gtkwave: Path): GtkwaveKind =
+        if (isApplication(gtkwave)) GtkwaveKind.TCL else gtkwaveKind(help(gtkwave))
+
+    private fun help(executable: Path): String =
         try {
-            "--wcp-initiate" in ExecUtil.execAndGetOutput(GeneralCommandLine(surfer.toString(), "--help"), HELP_TIMEOUT_MILLIS).stdout
+            ExecUtil.execAndGetOutput(commandLine(executable, listOf("--help")), HELP_TIMEOUT_MILLIS).let { it.stdout + it.stderr }
         } catch (_: ExecutionException) {
-            false
+            ""
         }
 
-    private fun seedArguments(layout: Path, topModule: String?): List<String> {
-        val seed = surferSeed(layout, topModule) ?: return emptyList()
+    private fun seedArguments(layout: Path, scope: String?): List<String> {
+        val seed = surferSeed(layout, scope) ?: return emptyList()
         return try {
             val file = FileUtil.createTempFile("surfer-layout", ".cmd", true).toPath()
             Files.writeString(file, seed)
@@ -293,7 +332,7 @@ object Waveforms {
             .createNotification(title, content, type).notify(project)
     }
 
-    private val SIMPLE_IDENTIFIER = Regex("""[A-Za-z_][A-Za-z0-9_$]*""")
+    private val HIERARCHICAL_NAME = Regex("""[A-Za-z_][A-Za-z0-9_$]*(?:\.[A-Za-z_][A-Za-z0-9_$]*)*""")
     private const val REPORTED_LINES = 5
     private const val STOP_TIMEOUT_MILLIS = 3_000L
     private const val HELP_TIMEOUT_MILLIS = 10_000
@@ -303,7 +342,7 @@ object Waveforms {
 internal class OpenViewer(
     val viewer: WaveformViewer,
     val dump: Path,
-    val configuration: IcarusRunConfiguration,
+    val configuration: WaveformSource,
     val handler: ProcessHandler,
     private val control: ViewerControl?,
 ) {
@@ -385,11 +424,7 @@ internal class SurferControl : ViewerControl {
             send(socket, GREETING)
             connection = socket
             connected.countDown()
-            // What Surfer answers is not needed, but has to be read.
-            val input = socket.getInputStream()
-            val buffer = ByteArray(4096)
-            while (input.read(buffer) >= 0) {
-            }
+            drain(socket)
         } catch (_: IOException) {
             // Closed, here or by Surfer.
         }
@@ -398,8 +433,7 @@ internal class SurferControl : ViewerControl {
     /** Surfer cannot be asked to raise its window. */
     override fun reload(raise: Boolean): Boolean = command(RELOAD)
 
-    override fun addSignals(signals: List<String>): Boolean =
-        command(signals.joinToString(",", """{"type":"command","command":"add_variables","variables":[""", "]}") { jsonString(it) })
+    override fun addSignals(signals: List<String>): Boolean = command(addVariables(signals))
 
     private fun command(message: String): Boolean {
         // Surfer connects once it has loaded the dump.
@@ -412,13 +446,7 @@ internal class SurferControl : ViewerControl {
         }
     }
 
-    private fun send(socket: Socket, message: String) = synchronized(this) {
-        socket.getOutputStream().apply {
-            write(message.toByteArray())
-            write(0)
-            flush()
-        }
-    }
+    private fun send(socket: Socket, message: String) = synchronized(this) { sendMessage(socket, message) }
 
     override fun close() {
         try {
@@ -432,6 +460,30 @@ internal class SurferControl : ViewerControl {
         const val GREETING = """{"type":"greeting","version":"0","commands":[]}"""
         const val RELOAD = """{"type":"command","command":"reload"}"""
         const val CONNECT_TIMEOUT_SECONDS = 3L
+
+        internal fun addVariables(signals: List<String>): String =
+            signals.joinToString(",", """{"type":"command","command":"add_variables","variables":[""", "]}") { jsonString(it) }
+
+        /** A WCP message is JSON followed by a zero byte. */
+        internal fun sendMessage(socket: Socket, message: String) {
+            socket.getOutputStream().apply {
+                write(message.toByteArray())
+                write(0)
+                flush()
+            }
+        }
+
+        /** What the viewer answers is not needed, but has to be read. */
+        internal fun drain(socket: Socket) {
+            try {
+                val input = socket.getInputStream()
+                val buffer = ByteArray(4096)
+                while (input.read(buffer) >= 0) {
+                }
+            } catch (_: IOException) {
+                // Closed, here or by the viewer.
+            }
+        }
 
         internal fun jsonString(value: String): String = buildString {
             append('"')
@@ -448,7 +500,73 @@ internal class SurferControl : ViewerControl {
 }
 
 /**
- * GTKWave takes no commands from outside, but runs a Tcl script every few hundred milliseconds when
+ * GTKWave 4's waveform control protocol, with the commands Surfer takes: started with `--wcp --wcp-port=<port>`,
+ * GTKWave listens on the loopback address, and the IDE connects. It listens once it has started, so the first
+ * command waits for it. Written from the options and command names of GTKWave 4.0.0-prealpha.
+ */
+internal class GtkwaveWcpControl(private val port: Int = freePort()) : ViewerControl {
+    @Volatile
+    private var connection: Socket? = null
+
+    override val arguments: List<String>
+        get() = listOf("--wcp", "--wcp-port=$port")
+
+    /** GTKWave cannot be asked to raise its window over WCP. */
+    override fun reload(raise: Boolean): Boolean = command(SurferControl.RELOAD)
+
+    override fun addSignals(signals: List<String>): Boolean = command(SurferControl.addVariables(signals))
+
+    @Synchronized
+    private fun command(message: String): Boolean {
+        val socket = connection?.takeUnless { it.isClosed } ?: connect() ?: return false
+        return try {
+            SurferControl.sendMessage(socket, message)
+            true
+        } catch (_: IOException) {
+            connection = null
+            false
+        }
+    }
+
+    private fun connect(): Socket? {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(CONNECT_TIMEOUT_SECONDS)
+        val addresses = (listOf(InetAddress.getLoopbackAddress()) + runCatching { InetAddress.getAllByName("localhost").toList() }
+            .getOrDefault(emptyList())).distinct()
+        while (true) {
+            for (address in addresses) {
+                val socket = Socket()
+                try {
+                    socket.connect(InetSocketAddress(address, port), ATTEMPT_MILLIS)
+                    SurferControl.sendMessage(socket, SurferControl.GREETING)
+                    thread(isDaemon = true, name = "GTKWave waveform control") { SurferControl.drain(socket) }
+                    connection = socket
+                    return socket
+                } catch (_: IOException) {
+                    runCatching { socket.close() }
+                }
+            }
+            if (System.nanoTime() > deadline) return null
+            Thread.sleep(RETRY_MILLIS)
+        }
+    }
+
+    override fun close() {
+        runCatching { connection?.close() }
+    }
+
+    private companion object {
+        /** GTKWave loads the dump before it listens, which for a large one takes a while. */
+        const val CONNECT_TIMEOUT_SECONDS = 10L
+        const val ATTEMPT_MILLIS = 500
+        const val RETRY_MILLIS = 200L
+
+        /** A port nothing listens on now; GTKWave takes it a moment later. */
+        fun freePort(): Int = ServerSocket(0, 1, InetAddress.getLoopbackAddress()).use { it.localPort }
+    }
+}
+
+/**
+ * GTKWave 3 takes no commands from outside, but runs a Tcl script every few hundred milliseconds when
  * started with `--repscript`. The script reloads the dump when it finds a file that [reload] creates,
  * and adds the signals listed in a file that [addSignals] creates. It deletes the file, which tells that
  * the request was seen: a GTKWave built without Tcl ignores the script. Written from GTKWave's
@@ -575,7 +693,7 @@ class WaveformDumpListener(private val workingDirectory: Path) : ProcessListener
 }
 
 /** Turns the dump file in `VCD info: dumpfile tb.vcd opened for output.` into a link that opens the viewer. */
-class WaveformConsoleFilter(private val configuration: IcarusRunConfiguration, private val workingDirectory: Path) : Filter {
+class WaveformConsoleFilter(private val configuration: WaveformSource, private val workingDirectory: Path) : Filter {
     override fun applyFilter(line: String, entireLength: Int): Filter.Result? {
         val range = Waveforms.dumpFileRange(line) ?: return null
         val dump = Waveforms.resolve(workingDirectory, line.substring(range)) ?: return null
@@ -590,7 +708,7 @@ class WaveformConsoleFilter(private val configuration: IcarusRunConfiguration, p
  * "Open Waveform" in the toolbar of a run. [source] names the testbench whose waveform is meant and the
  * dump it wrote, null if it wrote none.
  */
-class OpenWaveformAction(private val source: () -> Pair<IcarusRunConfiguration, Path?>) :
+class OpenWaveformAction(private val source: () -> Pair<WaveformSource, Path?>) :
     DumbAwareAction(
         "Open Waveform",
         "Open the waveform dumped by the selected testbench, or by the last one that dumped any, in GTKWave or Surfer",

@@ -366,7 +366,7 @@ class AddToWaveformAction : DumbAwareAction() {
                     NotificationGroupManager.getInstance().getNotificationGroup("Verilog Toolbox")
                         .createNotification(
                             "$name did not take the signals",
-                            "It could not be told to add ${signals.joinToString()}. A GTKWave built without Tcl " +
+                            "It could not be told to add ${signals.joinToString()}. A GTKWave 3 built without Tcl " +
                                 "cannot be; restarting the viewer with Open Waveform may help otherwise.",
                             NotificationType.WARNING,
                         )

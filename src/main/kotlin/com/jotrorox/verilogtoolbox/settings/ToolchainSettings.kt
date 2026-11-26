@@ -38,6 +38,8 @@ class ToolchainSettings :
         @JvmField var verilatorPath: String = "",
         @JvmField var verilatorLintEnabled: Boolean = true,
         @JvmField var verilatorOptions: String = "",
+        @JvmField var testbenchSimulator: TestbenchSimulator = TestbenchSimulator.ICARUS,
+        @JvmField var cmakePath: String = "",
         @JvmField var yosysPath: String = "",
         @JvmField var synthesisTarget: SynthesisTarget = SynthesisTarget.GENERIC,
         @JvmField var quartusPath: String = "",
@@ -114,6 +116,20 @@ class ToolchainSettings :
         get() = state.verilatorOptions
         set(value) {
             updateState { it.copy(verilatorOptions = value.trim()) }
+        }
+
+    /** The simulator that runs a testbench from its gutter icon or the context menu of a directory. */
+    var testbenchSimulator: TestbenchSimulator
+        get() = state.testbenchSimulator
+        set(value) {
+            updateState { it.copy(testbenchSimulator = value) }
+        }
+
+    /** Path to `cmake`, which builds Verilator's simulations; empty means "on PATH, or else the IDE's own". */
+    var cmakePath: String
+        get() = state.cmakePath
+        set(value) {
+            updateState { it.copy(cmakePath = value.trim()) }
         }
 
     /** Path to `yosys`; empty means "use the OSS CAD Suite's, or else look it up on PATH". */
@@ -259,6 +275,14 @@ class ToolchainSettings :
             return commandLine
         }
     }
+}
+
+/** What simulates a testbench that is run from the editor or the project view. */
+enum class TestbenchSimulator(private val displayName: String) {
+    ICARUS("Icarus Verilog"),
+    VERILATOR("Verilator");
+
+    override fun toString(): String = displayName
 }
 
 /** The first executable called [binary] in the directories of `PATH`, as the IDE's processes see it. */

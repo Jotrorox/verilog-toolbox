@@ -15,6 +15,8 @@ import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.util.elementType
+import com.jotrorox.verilogtoolbox.settings.TestbenchSimulator
+import com.jotrorox.verilogtoolbox.settings.ToolchainSettings
 import com.jotrorox.verilogtoolbox.verilog.VerilogFile
 import com.jotrorox.verilogtoolbox.verilog.VerilogTokenTypes
 import java.nio.file.Path
@@ -22,7 +24,8 @@ import kotlin.io.path.name
 
 /**
  * Creates an Icarus run configuration from a testbench (its gutter icon, the editor or the project
- * view) or, for all the testbenches below it, from a directory.
+ * view) or, for all the testbenches below it, from a directory, unless Verilator is the simulator chosen in
+ * the settings. A configuration that exists is found for its context whatever the choice.
  */
 class IcarusRunConfigurationProducer : LazyRunConfigurationProducer<IcarusRunConfiguration>() {
     override fun getConfigurationFactory(): ConfigurationFactory =
@@ -33,6 +36,7 @@ class IcarusRunConfigurationProducer : LazyRunConfigurationProducer<IcarusRunCon
         context: ConfigurationContext,
         sourceElement: Ref<PsiElement>,
     ): Boolean {
+        if (ToolchainSettings.getInstance().testbenchSimulator != TestbenchSimulator.ICARUS) return false
         directoryAt(context)?.let { directory ->
             // Reads the sources until it finds a testbench; a directory without one offers no run.
             if (VerilogTestbenches.inDirectory(directory).none()) return false

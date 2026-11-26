@@ -11,5 +11,14 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
+        <!-- A C++ testbench for Verilator: the model, a waveform, clock, reset and a CHECK macro the test tree reads. -->
+        <action id="VerilogToolbox.GenerateVerilatorCppTestbench"
+                class="com.jotrorox.verilogtoolbox.testbench.GenerateVerilatorCppTestbenchAction"
+                text="Generate Verilator C++ Testbench"
+                description="Create a C++ testbench next to this module that drives its Verilated model, dumps a waveform and checks it">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

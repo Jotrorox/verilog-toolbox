@@ -41,7 +41,7 @@ class IcarusRunState(
     private var selectedUrl: String? = null
 
     override fun execute(executor: Executor, runner: ProgramRunner<*>): ExecutionResult {
-        val handler = IcarusTestsProcessHandler {
+        val handler = SimulationTestsProcessHandler {
             findTestbenches().also { testbenches = it }.map { it.test }
         }
         ProcessTerminatedListener.attach(handler)
@@ -104,7 +104,7 @@ class IcarusRunState(
         val dumps = simulationDirectory?.let { WaveformDumpListener(it) }
 
         /** In a run of a directory the tree groups the testbenches by their file. */
-        val test = IcarusTestbench(
+        val test = SimulationTest(
             name = module ?: file?.name ?: configuration.name,
             locationUrl = if (file != null && module != null) VerilogTestLocator.url(file, module) else null,
             suite = if (file != null && directory != null) FileUtil.toSystemIndependentName(directory.relativize(file).toString()) else null,

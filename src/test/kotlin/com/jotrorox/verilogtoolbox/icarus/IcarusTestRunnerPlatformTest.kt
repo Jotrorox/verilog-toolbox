@@ -98,17 +98,17 @@ class IcarusTestRunnerPlatformTest : BasePlatformTestCase() {
             "$indent${child.name}$state\n" + describe(child, "$indent  ")
         }
 
-    private fun script(vararg steps: String): ((String) -> Unit) -> List<GeneralCommandLine> =
-        { steps.map { GeneralCommandLine("/bin/sh", "-c", it) } }
+    private fun script(vararg steps: String): ((String) -> Unit) -> List<SimulationStep> =
+        { steps.map { SimulationStep(GeneralCommandLine("/bin/sh", "-c", it)) } }
 
     fun testEachTestIsANodeGroupedBySuite() {
         if (SystemInfo.isWindows) return
-        val handler = IcarusTestsProcessHandler {
+        val handler = SimulationTestsProcessHandler {
             listOf(
-                IcarusTestbench("one", null, "a.sv", null, script("true", "echo ran")),
-                IcarusTestbench("two", null, "a.sv", null, script("true", "printf 'ERROR: a.sv:7: q is 3'")),
-                IcarusTestbench("three", null, "b.sv", null, script("true", "exit 3")),
-                IcarusTestbench("four", null, null, null, script("true", "echo 'WARNING: a.sv:7: careful'")),
+                SimulationTest("one", null, "a.sv", null, script("true", "echo ran")),
+                SimulationTest("two", null, "a.sv", null, script("true", "printf 'ERROR: a.sv:7: q is 3'")),
+                SimulationTest("three", null, "b.sv", null, script("true", "exit 3")),
+                SimulationTest("four", null, null, null, script("true", "echo 'WARNING: a.sv:7: careful'")),
             )
         }
         assertEquals(
@@ -129,23 +129,47 @@ class IcarusTestRunnerPlatformTest : BasePlatformTestCase() {
     fun testCompilerOutputIsTheFailureAndTheSimulationIsSkipped() {
         if (SystemInfo.isWindows) return
         val ran = directory.resolve("ran")
-        val handler = IcarusTestsProcessHandler {
-            listOf(IcarusTestbench("tb", null, null, null, script("echo 'tb.sv:5: syntax error' >&2; exit 2", "touch '$ran'")))
+        val handler = SimulationTestsProcessHandler {
+            listOf(SimulationTest("tb", null, null, null, script("echo 'tb.sv:5: syntax error' >&2; exit 2", "touch '$ran'")))
         }
         assertEquals("tb: FAILED_INDEX | Compilation failed | tb.sv:5: syntax error\n", run(handler))
         assertFalse(Files.exists(ran))
     }
 
+    fun testSilentBuildFailureNamesTheTool() {
+        if (SystemInfo.isWindows) return
+        val handler = SimulationTestsProcessHandler { listOf(SimulationTest("tb", null, null, null, script("exit 127", "true"))) }
+        assertEquals("tb: FAILED_INDEX | Compilation failed | sh exited with code 127\n", run(handler))
+    }
+
+    fun testStepFailureHasTheStepsHeadlineAndLaterStepsAreSkipped() {
+        if (SystemInfo.isWindows) return
+        var afterwards = 0
+        val handler = SimulationTestsProcessHandler {
+            listOf(
+                SimulationTest("tb", null, null, null, {
+                    listOf(
+                        SimulationStep(GeneralCommandLine("/bin/sh", "-c", "echo built"), output = BuildOutput.LIVE) { afterwards++ },
+                        SimulationStep(GeneralCommandLine("/bin/sh", "-c", "echo 'x.cpp:3: error' >&2; exit 1"), failure = "C++ build failed"),
+                        SimulationStep(GeneralCommandLine("/bin/sh", "-c", "true")),
+                    )
+                }),
+            )
+        }
+        assertEquals("tb: FAILED_INDEX | C++ build failed | x.cpp:3: error\n", run(handler))
+        assertEquals(1, afterwards)
+    }
+
     fun testPassingRunExitsWithZero() {
         if (SystemInfo.isWindows) return
-        val handler = IcarusTestsProcessHandler { listOf(IcarusTestbench("tb", null, null, null, script("true", "echo ran"))) }
+        val handler = SimulationTestsProcessHandler { listOf(SimulationTest("tb", null, null, null, script("true", "echo ran"))) }
         assertEquals("tb: PASSED_INDEX\n", run(handler))
         assertEquals(0, handler.exitCode)
     }
 
     fun testStepsThatCannotBeBuiltFailTheTest() {
-        val handler = IcarusTestsProcessHandler {
-            listOf(IcarusTestbench("tb", null, null, null, { throw ExecutionException("no compiler") }))
+        val handler = SimulationTestsProcessHandler {
+            listOf(SimulationTest("tb", null, null, null, { throw ExecutionException("no compiler") }))
         }
         assertEquals("tb: FAILED_INDEX | no compiler\n", run(handler))
         assertEquals(1, handler.exitCode)
@@ -154,10 +178,10 @@ class IcarusTestRunnerPlatformTest : BasePlatformTestCase() {
     fun testStoppingEndsTheRunningTestAndStartsNoOther() {
         if (SystemInfo.isWindows) return
         val ran = directory.resolve("ran")
-        val handler = IcarusTestsProcessHandler {
+        val handler = SimulationTestsProcessHandler {
             listOf(
-                IcarusTestbench("slow", null, null, null, script("true", "echo started; sleep 60")),
-                IcarusTestbench("next", null, null, null, script("true", "touch '$ran'")),
+                SimulationTest("slow", null, null, null, script("true", "echo started; sleep 60")),
+                SimulationTest("next", null, null, null, script("true", "touch '$ran'")),
             )
         }
         val console = console(handler)

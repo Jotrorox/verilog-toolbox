@@ -14,6 +14,8 @@ Verilog and SystemVerilog support for CLion.
 - Optional [Verible](https://github.com/chipsalliance/verible) language server for formatting and style lint
 - Run testbenches with [Icarus Verilog](https://github.com/steveicarus/iverilog) from the gutter, or all
   testbenches of a folder at once, with a pass/fail tree
+- Simulate with [Verilator](https://verilator.org) instead: Verilog testbenches with `--timing`, or C++
+  testbenches that drive the Verilated model, built with CMake into a project CLion loads to debug them
 - **Generate Testbench** for a module: instance, clock, reset and waveform dump already written
 - **Check Synthesis** of a module with [Yosys](https://yosyshq.net/yosys/): what does not synthesize, multiple
   drivers, logic loops and latches, and the resources it takes, as generic gates or for an FPGA family
@@ -53,6 +55,36 @@ unsaved changes included, and its warnings and errors show up next to slang-serv
 design file list when one is selected, and otherwise with the project's directories searched for the modules
 they use. Extra options, such as `-Wall` for the style warnings, and a switch to turn the lint off are in the
 settings. Syntax errors are left to slang-server, which reports them more precisely.
+
+### Verilator simulation
+
+Verilator simulates much faster than Icarus Verilog and knows far more SystemVerilog. Choose it under
+**Settings → Tools → Verilog Toolbox → Simulation**, and the run icon of a testbench and **Run 'Testbenches in …'**
+of a directory use it; run configurations of the type *Verilator* can be made by hand either way. Results show
+in the same test tree: a testbench fails when Verilator or the C++ build fails, when the simulation exits
+non-zero, or when it reports `$error`, `$fatal` or a failing assertion.
+
+**Verilog testbenches** are verilated with `--main --timing`, so the delays, clocks and `initial` blocks of an
+ordinary testbench, such as one of **Generate Testbench**, run as they do in Icarus Verilog. The design comes from
+the file list as for Icarus runs. Warnings are shown but do not stop the build (`-Wno-fatal` in the run
+configuration's Verilator options). A `$dumpfile` makes Verilator trace the waveform, as FST when the file is
+called `.fst` and otherwise as VCD, and **Open Waveform** and the reload after a re-run work as with Icarus.
+
+**C++ testbenches.** A C++ file that includes a Verilated model, `#include "Vcounter.h"` for the module
+`counter`, has **Run 'counter_tb'** in its context menu. **Generate Verilator C++ Testbench** on a module writes
+one: the model, a VCD trace, the clock and reset driven as the Verilog testbench does it, and a `CHECK` macro
+whose failures show in the test tree with their place. Other C++ files of the testbench go in the run
+configuration.
+
+**CMake and CLion.** The simulation is built with CMake, not with Verilator's Makefiles or its CMake package,
+which need `make`, Python or Perl. Each run verilates the design, writes `build/verilator/<testbench>/CMakeLists.txt`
+from Verilator's list of the files it generated, and builds it in `build/verilator/cmake-build-run` with the
+CMake and Ninja on your `PATH`, or else CLion's own, and on Windows CLion's MinGW. **Load CMake Project in
+CLion** in the toolbar of the run loads `build/verilator/CMakeLists.txt`, which takes in every simulation of the
+project, into CLion: its CMake application and CTest configurations then build, run and debug the simulations,
+C++ testbench and Verilated model included, with CLion's toolchain, debugger and test runner. Changing a Verilog
+source verilates it again when CLion builds; when the design gains modules or files, run the configuration once
+from the IDE so that the list of generated files is written again.
 
 ### Check Synthesis
 
@@ -278,7 +310,7 @@ Simulations run in `build/sim/<top module>/` of the project, so dumps stay out o
 paths in `$readmemh` and `$fopen` start there too; set a working directory in the run configuration to
 run somewhere else. Layouts are kept next to the testbench (`<module>.gtkw`, `<module>.surf.ron`) so they
 can be committed; the first Surfer layout is created with the testbench's signals. A viewer opened from
-the IDE reloads after each re-run (Surfer 0.4 or newer, GTKWave built with Tcl).
+the IDE reloads after each re-run (Surfer 0.4 or newer, GTKWave 4, or GTKWave 3 built with Tcl).
 
 **Add to Waveform** in the editor's context menu adds the signal at the caret to that viewer, under the
 name it has in the simulation: a signal of `counter` instantiated as `dut` in `counter_tb` is added as

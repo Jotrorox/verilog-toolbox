@@ -5,7 +5,7 @@
     <vendor>Jotrorox</vendor>
 
     <description><![CDATA[
-        <p>Verilog and SystemVerilog support for CLion: slang-server code insight, Verilator lint, Icarus Verilog
+        <p>Verilog and SystemVerilog support for CLion: slang-server code insight, Verilator lint and simulation, Icarus Verilog
         testbenches in the test runner, a testbench generator, Yosys synthesis checks, GTKWave or Surfer
         waveforms, Quartus Prime projects and FPGA programming with openFPGALoader, with the open source tools
         downloadable as the OSS CAD Suite.</p>
@@ -15,6 +15,8 @@
             <li>Verilator lint as you type: width mismatches, incomplete cases, inferred latches, multiple drivers</li>
             <li>Run testbenches with Icarus Verilog from the gutter, or every testbench of a folder at once, with
                 a pass/fail tree in the test runner</li>
+            <li>Or simulate with Verilator: Verilog testbenches with <code>--timing</code>, or C++ testbenches that drive
+                the Verilated model, built with CMake into a project CLion loads to build, run and debug them</li>
             <li>Generate Testbench for a module: instance, clock, reset and waveform dump already written</li>
             <li>Check Synthesis with Yosys, for generic gates or iCE40, ECP5, Gowin and Xilinx 7-series</li>
             <li>Quartus Prime without its window: compile, program the device, assign pins and read the timing
