@@ -1,0 +1,20 @@
+<!-- SymbiYosys: .sby files and formal verification runs in the test runner. Included by plugin.xml. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType name="SymbiYosys" language="SymbiYosys" extensions="sby" fieldName="INSTANCE"
+                  implementationClass="com.jotrorox.verilogtoolbox.sby.SbyFileType"/>
+        <lang.parserDefinition language="SymbiYosys"
+                               implementationClass="com.jotrorox.verilogtoolbox.sby.SbyParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="SymbiYosys"
+                                       implementationClass="com.jotrorox.verilogtoolbox.sby.SbySyntaxHighlighterFactory"/>
+        <colorSettingsPage implementation="com.jotrorox.verilogtoolbox.sby.SbyColorSettingsPage"/>
+        <lang.commenter language="SymbiYosys"
+                        implementationClass="com.jotrorox.verilogtoolbox.sby.SbyCommenter"/>
+
+        <!-- Run the tasks of a .sby file with sby, each task a test. -->
+        <configurationType implementation="com.jotrorox.verilogtoolbox.sby.SbyConfigurationType"/>
+        <runConfigurationProducer implementation="com.jotrorox.verilogtoolbox.sby.SbyRunConfigurationProducer"/>
+        <runLineMarkerContributor language="SymbiYosys"
+                                  implementationClass="com.jotrorox.verilogtoolbox.sby.SbyRunLineMarkerContributor"/>
+    </extensions>
+</idea-plugin>

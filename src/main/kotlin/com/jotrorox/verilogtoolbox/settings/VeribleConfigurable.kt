@@ -172,7 +172,7 @@ class VeribleConfigurable : Configurable, Configurable.NoScroll, Configurable.No
             row {
                 comment(
                     "The nightly build from github.com/YosysHQ/oss-cad-suite-build (${OssCadSuite.DOWNLOAD_SIZE}). " +
-                        "Icarus Verilog, Verilator, Yosys, GTKWave and openFPGALoader are taken from it when their paths are " +
+                        "Icarus Verilog, Verilator, Yosys, SymbiYosys, GTKWave and openFPGALoader are taken from it when their paths are " +
                         "empty; older builds are removed after an update."
                 )
             }
@@ -252,6 +252,17 @@ class VeribleConfigurable : Configurable, Configurable.NoScroll, Configurable.No
                 comboBox(SynthesisTarget.entries)
                     .bindItem(toolchain::synthesisTarget.toNullableProperty())
                     .wrappingComment("The cells the resource summary counts: generic gates, or those of an FPGA family.")
+            }
+        }
+        group("SymbiYosys Formal Verification") {
+            row("Path to sby:") {
+                textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select sby"))
+                    .bindText(toolchain::sbyPath)
+                    .align(AlignX.FILL)
+                    .wrappingComment(
+                        "Runs the tasks of <code>.sby</code> files. Leave empty to use the OSS CAD Suite's, which comes with " +
+                            "Yosys and the solvers, or else the sby found on your PATH."
+                    )
             }
         }
         group("openFPGALoader") {

@@ -17,7 +17,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 
-/** Settings of the slang language server, the simulation, lint and synthesis tools, the programmer and the waveform viewers. */
+/** Settings of the slang language server, the simulation, lint, synthesis and formal verification tools, the programmer and the waveform viewers. */
 @Service(Service.Level.APP)
 @State(name = "VerilogToolboxToolchain", storages = [Storage("verilogToolbox.xml")])
 class ToolchainSettings :
@@ -42,6 +42,7 @@ class ToolchainSettings :
         @JvmField var cmakePath: String = "",
         @JvmField var yosysPath: String = "",
         @JvmField var synthesisTarget: SynthesisTarget = SynthesisTarget.GENERIC,
+        @JvmField var sbyPath: String = "",
         @JvmField var quartusPath: String = "",
         @JvmField var quartusSimulationLibraries: Boolean = true,
         @JvmField var gowinEdaPath: String = "",
@@ -146,6 +147,13 @@ class ToolchainSettings :
             updateState { it.copy(synthesisTarget = value) }
         }
 
+    /** Path to SymbiYosys's `sby`; empty means "use the OSS CAD Suite's, or else look it up on PATH". */
+    var sbyPath: String
+        get() = state.sbyPath
+        set(value) {
+            updateState { it.copy(sbyPath = value.trim()) }
+        }
+
     /**
      * Where Quartus Prime is installed: its version directory, its `quartus` directory or the directory of
      * its tools. Empty means "where QUARTUS_ROOTDIR points, on PATH, or where it installs by default".
@@ -205,6 +213,9 @@ class ToolchainSettings :
         else OssCadSuite.tool("verilator_bin") ?: findOnPath(binary("verilator"))
 
     fun findYosys(): Path? = findTool(yosysPath, "yosys")
+
+    /** SymbiYosys. The suite's `sby` finds the suite's Yosys and solvers; another one those on PATH. */
+    fun findSby(): Path? = findTool(sbyPath, "sby")
 
     fun findOpenFpgaLoader(): Path? = findTool(openFpgaLoaderPath, OpenFpgaLoader.TOOL)
 

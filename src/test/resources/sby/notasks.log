@@ -1,0 +1,29 @@
+SBY 19:11:25 [notasks] Removing directory 'C:\work\formal\notasks'.
+SBY 19:11:26 [notasks] Copy 'C:\work\formal\rtl\counter.sv' to 'C:\work\formal\notasks\src\counter.sv'.
+SBY 19:11:26 [notasks] engine_0: smtbmc
+SBY 19:11:26 [notasks] base: starting process "cd notasks/src& yosys -ql ../model/design.log ../model/design.ys"
+SBY 19:11:26 [notasks] base: finished (returncode=0)
+SBY 19:11:26 [notasks] prep: starting process "cd notasks/model& yosys -ql design_prep.log design_prep.ys"
+SBY 19:11:26 [notasks] prep: finished (returncode=0)
+SBY 19:11:26 [notasks] smt2: starting process "cd notasks/model& yosys -ql design_smt2.log design_smt2.ys"
+SBY 19:11:26 [notasks] smt2: finished (returncode=0)
+SBY 19:11:26 [notasks] engine_0: starting process "cd notasks& yosys-smtbmc --presat --unroll --noprogress -t 5  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2"
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Solver: yices
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assumptions in step 0..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assertions in step 0..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assumptions in step 1..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assertions in step 1..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assumptions in step 2..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assertions in step 2..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assumptions in step 3..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assertions in step 3..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assumptions in step 4..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Checking assertions in step 4..
+SBY 19:11:26 [notasks] engine_0: ##   0:00:00  Status: passed
+SBY 19:11:26 [notasks] engine_0: finished (returncode=0)
+SBY 19:11:26 [notasks] engine_0: Status returned by engine: pass
+SBY 19:11:26 [notasks] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 19:11:26 [notasks] summary: Elapsed process time unvailable on Windows
+SBY 19:11:26 [notasks] summary: engine_0 (smtbmc) returned pass
+SBY 19:11:26 [notasks] summary: engine_0 did not produce any traces
+SBY 19:11:26 [notasks] DONE (PASS, rc=0)

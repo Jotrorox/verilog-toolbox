@@ -17,6 +17,14 @@
 - Generate Verilator C++ Testbench for a module: the model, a waveform, clock and reset, and a `CHECK` macro
   whose failures show in the test tree
 
+- Formal verification with SymbiYosys: highlighting and commenting for `.sby` files, with colours of their own
+  under Settings | Editor | Color Scheme | SymbiYosys; a run icon on each task and on `[tasks]`, and a
+  "SymbiYosys" run configuration with the tasks, `sby` options and working directory; each task a test in the
+  test runner that says which assertion failed where, or why the task did not finish, with Rerun Failed Tests
+  and the result in the gutter; source locations and traces linked in the console, and "Open Trace" showing the
+  counterexample or cover trace in GTKWave or Surfer. `sby` is taken from the OSS CAD Suite or set in the
+  settings
+
 - GOWIN EDA support like that for Quartus Prime: a **GOWIN EDA** tool window with an Overview (device, top
   module, the steps of the last build, timing, resources, reports), a Pins tab that edits pins, I/O types, pull
   modes and drive in the `.cst` with the package's pins and the device's I/O types offered, and the messages of

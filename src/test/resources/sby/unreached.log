@@ -1,0 +1,27 @@
+SBY 19:11:47 [unreached_cover] Removing directory 'C:\work\formal\unreached_cover'.
+SBY 19:11:47 [unreached_cover] Copy 'C:\work\formal\rtl\unreached.sv' to 'C:\work\formal\unreached_cover\src\unreached.sv'.
+SBY 19:11:47 [unreached_cover] engine_0: smtbmc yices
+SBY 19:11:47 [unreached_cover] base: starting process "cd unreached_cover/src& yosys -ql ../model/design.log ../model/design.ys"
+SBY 19:11:48 [unreached_cover] base: finished (returncode=0)
+SBY 19:11:48 [unreached_cover] prep: starting process "cd unreached_cover/model& yosys -ql design_prep.log design_prep.ys"
+SBY 19:13:40 [unreached_cover] prep: finished (returncode=0)
+SBY 19:13:40 [unreached_cover] smt2: starting process "cd unreached_cover/model& yosys -ql design_smt2.log design_smt2.ys"
+SBY 19:13:41 [unreached_cover] smt2: finished (returncode=0)
+SBY 19:13:41 [unreached_cover] engine_0: starting process "cd unreached_cover& yosys-smtbmc -s yices --presat --unroll -c --noprogress -t 4  --append 0 --dump-vcd engine_0/trace%.vcd --dump-yw engine_0/trace%.yw --dump-vlogtb engine_0/trace%_tb.v --dump-smtc engine_0/trace%.smtc model/design_smt2.smt2"
+SBY 19:13:41 [unreached_cover] engine_0: ##   0:00:00  Solver: yices
+SBY 19:13:41 [unreached_cover] engine_0: ##   0:00:00  Checking cover reachability in step 0..
+SBY 19:13:41 [unreached_cover] engine_0: ##   0:00:00  Checking cover reachability in step 1..
+SBY 19:13:41 [unreached_cover] engine_0: ##   0:00:00  Checking cover reachability in step 2..
+SBY 19:13:41 [unreached_cover] engine_0: ##   0:00:00  Checking cover reachability in step 3..
+SBY 19:13:41 [unreached_cover] engine_0: ##   0:00:00  Unreached cover statement at counter: unreached.sv:15.54-15.76 (_witness_.check_unreached_sv_15_cover_13)
+SBY 19:13:41 [unreached_cover] engine_0: ##   0:00:00  Status: failed
+SBY 19:13:41 [unreached_cover] engine_0: finished (returncode=1)
+SBY 19:13:41 [unreached_cover] engine_0: Status returned by engine: FAIL
+SBY 19:13:41 [unreached_cover] summary: Elapsed clock time [H:MM:SS (secs)]: 0:01:53 (113)
+SBY 19:13:41 [unreached_cover] summary: Elapsed process time unvailable on Windows
+SBY 19:13:41 [unreached_cover] summary: engine_0 (smtbmc yices) returned FAIL
+SBY 19:13:41 [unreached_cover] summary: engine_0 did not produce any traces
+SBY 19:13:41 [unreached_cover] summary: unreached cover statements:
+SBY 19:13:41 [unreached_cover] summary:   counter._witness_.check_unreached_sv_15_cover_13 at unreached.sv:15.54-15.76
+SBY 19:13:41 [unreached_cover] DONE (FAIL, rc=2)
+SBY 19:13:41 The following tasks failed: ['cover']

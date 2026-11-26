@@ -1,0 +1,137 @@
+SBY 19:14:42 [counter_bmc] Removing directory 'C:\work\formal\counter_bmc'.
+SBY 19:14:42 [counter_bmc] Copy 'C:\work\formal\rtl\counter.sv' to 'C:\work\formal\counter_bmc\src\counter.sv'.
+SBY 19:14:43 [counter_bmc] engine_0: smtbmc yices
+SBY 19:14:43 [counter_prove] Removing directory 'C:\work\formal\counter_prove'.
+SBY 19:14:43 [counter_prove] Copy 'C:\work\formal\rtl\counter.sv' to 'C:\work\formal\counter_prove\src\counter.sv'.
+SBY 19:14:43 [counter_prove] engine_0: smtbmc yices
+SBY 19:14:43 [counter_cover] Removing directory 'C:\work\formal\counter_cover'.
+SBY 19:14:43 [counter_cover] Copy 'C:\work\formal\rtl\counter.sv' to 'C:\work\formal\counter_cover\src\counter.sv'.
+SBY 19:14:43 [counter_cover] engine_0: smtbmc yices
+SBY 19:14:43 [counter_bmc] base: starting process "cd counter_bmc/src& yosys -ql ../model/design.log ../model/design.ys"
+SBY 19:14:43 [counter_prove] base: starting process "cd counter_prove/src& yosys -ql ../model/design.log ../model/design.ys"
+SBY 19:14:43 [counter_cover] base: starting process "cd counter_cover/src& yosys -ql ../model/design.log ../model/design.ys"
+SBY 19:14:43 [counter_bmc] base: finished (returncode=0)
+SBY 19:14:43 [counter_bmc] prep: starting process "cd counter_bmc/model& yosys -ql design_prep.log design_prep.ys"
+SBY 19:14:43 [counter_cover] base: finished (returncode=0)
+SBY 19:14:43 [counter_cover] prep: starting process "cd counter_cover/model& yosys -ql design_prep.log design_prep.ys"
+SBY 19:14:43 [counter_prove] base: finished (returncode=0)
+SBY 19:14:43 [counter_prove] prep: starting process "cd counter_prove/model& yosys -ql design_prep.log design_prep.ys"
+SBY 19:14:43 [counter_cover] prep: finished (returncode=0)
+SBY 19:14:43 [counter_cover] smt2: starting process "cd counter_cover/model& yosys -ql design_smt2.log design_smt2.ys"
+SBY 19:14:43 [counter_bmc] prep: finished (returncode=0)
+SBY 19:14:43 [counter_bmc] smt2: starting process "cd counter_bmc/model& yosys -ql design_smt2.log design_smt2.ys"
+SBY 19:14:43 [counter_cover] smt2: finished (returncode=0)
+SBY 19:14:43 [counter_cover] engine_0: starting process "cd counter_cover& yosys-smtbmc -s yices --presat --unroll -c --noprogress -t 10  --append 0 --dump-vcd engine_0/trace%.vcd --dump-yw engine_0/trace%.yw --dump-vlogtb engine_0/trace%_tb.v --dump-smtc engine_0/trace%.smtc model/design_smt2.smt2"
+SBY 19:14:43 [counter_cover] engine_0: ##   0:00:00  Solver: yices
+SBY 19:14:44 [counter_cover] engine_0: ##   0:00:00  Checking cover reachability in step 0..
+SBY 19:14:44 [counter_cover] engine_0: ##   0:00:00  Checking cover reachability in step 1..
+SBY 19:14:44 [counter_cover] engine_0: ##   0:00:00  Reached cover statement in step 1 at counter: counter.sv:15.30-15.51 (_witness_.check_counter_sv_15_cover_11)
+SBY 19:14:44 [counter_cover] engine_0: ##   0:00:00  Writing trace to VCD file: engine_0/trace0.vcd
+SBY 19:14:44 [counter_cover] engine_0: ##   0:00:00  Writing trace to Verilog testbench: engine_0/trace0_tb.v
+SBY 19:14:44 [counter_cover] engine_0: ##   0:00:00  Writing trace to constraints file: engine_0/trace0.smtc
+SBY 19:14:44 [counter_cover] engine_0: ##   0:00:00  Writing trace to Yosys witness file: engine_0/trace0.yw
+SBY 19:14:44 [counter_cover] engine_0: ##   0:00:00  Status: passed
+SBY 19:14:44 [counter_prove] prep: finished (returncode=0)
+SBY 19:14:44 [counter_prove] smt2: starting process "cd counter_prove/model& yosys -ql design_smt2.log design_smt2.ys"
+SBY 19:14:44 [counter_cover] engine_0: finished (returncode=0)
+SBY 19:14:44 [counter_cover] engine_0: Status returned by engine: pass
+SBY 19:14:44 [counter_cover] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:01 (1)
+SBY 19:14:44 [counter_cover] summary: Elapsed process time unvailable on Windows
+SBY 19:14:44 [counter_cover] summary: engine_0 (smtbmc yices) returned pass
+SBY 19:14:44 [counter_cover] summary: cover trace: counter_cover\engine_0\trace0.vcd
+SBY 19:14:44 [counter_cover] summary:   reached cover statement counter._witness_.check_counter_sv_15_cover_11 at counter.sv:15.30-15.51 step 1
+SBY 19:14:44 [counter_cover] DONE (PASS, rc=0)
+SBY 19:14:44 [counter_bmc] smt2: finished (returncode=0)
+SBY 19:14:44 [counter_bmc] engine_0: starting process "cd counter_bmc& yosys-smtbmc -s yices --presat --unroll --noprogress -t 10  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2"
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Solver: yices
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assumptions in step 0..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assertions in step 0..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assumptions in step 1..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assertions in step 1..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assumptions in step 2..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assertions in step 2..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assumptions in step 3..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assertions in step 3..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assumptions in step 4..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assertions in step 4..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assumptions in step 5..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assertions in step 5..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assumptions in step 6..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assertions in step 6..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assumptions in step 7..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Checking assertions in step 7..
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  BMC failed!
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Assert failed in counter: counter.sv:14.46-14.68 (_witness_.check_counter_sv_14_assert_8)
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Writing trace to VCD file: engine_0/trace.vcd
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Writing trace to Verilog testbench: engine_0/trace_tb.v
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Writing trace to constraints file: engine_0/trace.smtc
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Writing trace to Yosys witness file: engine_0/trace.yw
+SBY 19:14:44 [counter_bmc] engine_0: ##   0:00:00  Status: failed
+SBY 19:14:44 [counter_prove] smt2: finished (returncode=0)
+SBY 19:14:44 [counter_prove] engine_0.basecase: starting process "cd counter_prove& yosys-smtbmc -s yices --presat --unroll --noprogress -t 10  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2"
+SBY 19:14:44 [counter_prove] engine_0.induction: starting process "cd counter_prove& yosys-smtbmc -s yices --presat --unroll -i --noprogress -t 10  --append 0 --dump-vcd engine_0/trace_induct.vcd --dump-yw engine_0/trace_induct.yw --dump-vlogtb engine_0/trace_induct_tb.v --dump-smtc engine_0/trace_induct.smtc model/design_smt2.smt2"
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Solver: yices
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 0..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 0..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 1..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 1..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 2..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 2..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 3..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 3..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 4..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 4..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 5..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 5..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 6..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 6..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 7..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 7..
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  BMC failed!
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Assert failed in counter: counter.sv:14.46-14.68 (_witness_.check_counter_sv_14_assert_8)
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Writing trace to VCD file: engine_0/trace.vcd
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Writing trace to Verilog testbench: engine_0/trace_tb.v
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Writing trace to constraints file: engine_0/trace.smtc
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Writing trace to Yosys witness file: engine_0/trace.yw
+SBY 19:14:44 [counter_prove] engine_0.basecase: ##   0:00:00  Status: failed
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Solver: yices
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 10..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 9..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 8..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 7..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 6..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 5..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 4..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 3..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 2..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 1..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Trying induction in step 0..
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Temporal induction failed!
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Assert failed in counter: counter.sv:14.46-14.68 (_witness_.check_counter_sv_14_assert_8)
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Writing trace to VCD file: engine_0/trace_induct.vcd
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Writing trace to Verilog testbench: engine_0/trace_induct_tb.v
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Writing trace to constraints file: engine_0/trace_induct.smtc
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Writing trace to Yosys witness file: engine_0/trace_induct.yw
+SBY 19:14:45 [counter_prove] engine_0.induction: ##   0:00:00  Status: failed
+SBY 19:14:45 [counter_bmc] engine_0: finished (returncode=1)
+SBY 19:14:45 [counter_bmc] engine_0: Status returned by engine: FAIL
+SBY 19:14:45 [counter_prove] engine_0.induction: finished (returncode=1)
+SBY 19:14:45 [counter_prove] engine_0.induction: Status returned by engine for induction: FAIL
+SBY 19:14:45 [counter_bmc] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:02 (2)
+SBY 19:14:45 [counter_bmc] summary: Elapsed process time unvailable on Windows
+SBY 19:14:45 [counter_bmc] summary: engine_0 (smtbmc yices) returned FAIL
+SBY 19:14:45 [counter_bmc] summary: counterexample trace: counter_bmc\engine_0\trace.vcd
+SBY 19:14:45 [counter_bmc] summary:   failed assertion counter._witness_.check_counter_sv_14_assert_8 at counter.sv:14.46-14.68 step 7
+SBY 19:14:45 [counter_bmc] DONE (FAIL, rc=2)
+SBY 19:14:45 [counter_prove] engine_0.basecase: finished (returncode=1)
+SBY 19:14:45 [counter_prove] engine_0.basecase: Status returned by engine for basecase: FAIL
+SBY 19:14:45 [counter_prove] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:02 (2)
+SBY 19:14:45 [counter_prove] summary: Elapsed process time unvailable on Windows
+SBY 19:14:45 [counter_prove] summary: engine_0 (smtbmc yices) returned FAIL for basecase
+SBY 19:14:45 [counter_prove] summary: engine_0 (smtbmc yices) returned FAIL for induction
+SBY 19:14:45 [counter_prove] summary: counterexample trace [basecase]: counter_prove\engine_0\trace.vcd
+SBY 19:14:45 [counter_prove] summary:   failed assertion counter._witness_.check_counter_sv_14_assert_8 at counter.sv:14.46-14.68 step 7
+SBY 19:14:45 [counter_prove] summary: counterexample trace [induction]: counter_prove\engine_0\trace_induct.vcd
+SBY 19:14:45 [counter_prove] summary:   failed assertion counter._witness_.check_counter_sv_14_assert_8 at counter.sv:14.46-14.68
+SBY 19:14:45 [counter_prove] DONE (FAIL, rc=2)
+SBY 19:14:45 The following tasks failed: ['bmc', 'prove']

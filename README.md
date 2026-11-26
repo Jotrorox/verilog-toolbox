@@ -19,6 +19,8 @@ Verilog and SystemVerilog support for CLion.
 - **Generate Testbench** for a module: instance, clock, reset and waveform dump already written
 - **Check Synthesis** of a module with [Yosys](https://yosyshq.net/yosys/): what does not synthesize, multiple
   drivers, logic loops and latches, and the resources it takes, as generic gates or for an FPGA family
+- Formal verification with [SymbiYosys](https://github.com/YosysHQ/sby): `.sby` files are highlighted, each task
+  runs from the gutter as a test that passes or fails, and the counterexample opens in GTKWave or Surfer
 - [Quartus Prime](https://www.altera.com/products/development-tools/quartus) without its window: compile,
   program the device, assign pins and read timing and resource reports from the IDE, with the design of the
   `.qsf` shared with every other tool
@@ -41,7 +43,7 @@ from there if they're not installed. Verible has no prebuilt binary for Intel Ma
 
 ### OSS CAD Suite
 
-Icarus Verilog, Verilator, Yosys, GTKWave and openFPGALoader come together in the nightly
+Icarus Verilog, Verilator, Yosys, SymbiYosys with its solvers, GTKWave and openFPGALoader come together in the nightly
 [OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build), which the settings, the run configuration and
 the notification about a missing tool offer to download (500–750 MB, 2–2.5 GB unpacked). The whole suite is
 kept, the FPGA tools included, and an update removes the build it replaces. A tool whose path is left empty is
@@ -99,6 +101,32 @@ The design is read from the design file list when one is selected. SystemVerilog
 [yosys-slang](https://github.com/povik/yosys-slang) front end when Yosys has it, as the OSS CAD Suite's does,
 so that Yosys sees the design as slang-server does. Runs happen in `build/synth/<module>/` of the project,
 which keeps the script, the full `yosys.log` and the statistics.
+
+### Formal verification with SymbiYosys
+
+`.sby` files are highlighted: sections, tasks and the task tags in front of lines (`bmc: mode bmc`), options,
+engines, the Yosys script and the files, with `--` blocks and Python blocks; **Comment Line** uses `#`.
+
+Every task of `[tasks]` has a run icon in the gutter, and the `[tasks]` header one for the file's default
+tasks; **Run** on a `.sby` file in the project view does the same. The run is an ordinary *SymbiYosys* run
+configuration, with the tasks, the options for `sby` (`-f` by default, so that a run replaces the directories
+of the last one) and the working directory, which is the `.sby` file's own unless set, as `sby` reads the files
+of `[files]` from there.
+
+Each task is a test in the test runner, with its lines below it; tasks run in parallel as `sby` runs them. A
+task passes when it ends with the status the file expects, `PASS` unless `expect` says otherwise. A failed one
+says what failed and where, such as `Assertion failed at fifo.sv:40.5-40.30 in step 7`, or why the task did not
+get that far, such as the Yosys syntax error, with the summary of `sby` below it. The gutter icon of a task
+shows how its last run ended, and **Rerun Failed Tests** runs the failed tasks again.
+
+The console links locations to the source the task copied them from, and every trace to the waveform viewer.
+**Open Trace** in the toolbar shows the counterexample, or the cover trace, of the selected task, or of the last
+task that failed, in GTKWave or Surfer. The signals shown are saved next to the `.sby` file, named after the
+top module of its script (`counter.gtkw`), for every task and run, and a viewer that is open shows the new trace
+after a re-run.
+
+SymbiYosys comes with the OSS CAD Suite, together with Yosys and the solvers it calls; another `sby` can be set
+in the settings.
 
 ### Quartus Prime
 
