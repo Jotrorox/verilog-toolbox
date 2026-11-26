@@ -1,5 +1,6 @@
 package com.jotrorox.verilogtoolbox.quartus
 
+import com.jotrorox.verilogtoolbox.quartus.tcl.QuartusTclReportFileType
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -162,7 +163,8 @@ object QuartusReports {
 
     private val ENDED = Regex("""^Quartus Prime .* was (un)?successful\.""")
 
-    fun read(file: Path): String? = runCatching { Files.readString(file) }.getOrNull()
+    /** The text of a report, in the code page Quartus wrote it in. */
+    fun read(file: Path): String? = runCatching { QuartusTclReportFileType.decode(Files.readAllBytes(file)) }.getOrNull()
 }
 
 /** What the reports of a revision say about its last compilation. Reads the files when it is created. */
