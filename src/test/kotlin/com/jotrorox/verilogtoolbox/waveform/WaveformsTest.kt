@@ -80,6 +80,7 @@ class WaveformsTest {
         val layout = folder.root.toPath().resolve("my tb.surf.ron")
         assertEquals("scope_add counter_tb\nsave_state_as $layout\n", Waveforms.surferSeed(layout, "counter_tb"))
         // An escaped identifier is not a word of a command.
+        assertEquals("scope_add TOP.counter_tb\nsave_state_as $layout\n", Waveforms.surferSeed(layout, "TOP.counter_tb"))
         assertEquals("save_state_as $layout\n", Waveforms.surferSeed(layout, "\\bus[0] "))
         assertEquals("save_state_as $layout\n", Waveforms.surferSeed(layout, null))
     }
@@ -131,6 +132,40 @@ class WaveformsTest {
     @Test
     fun surferThatDoesNotConnectIsNotReloaded() {
         SurferControl().use { assertFalse(it.reload(raise = true)) }
+    }
+
+    /** Excerpts of `gtkwave --help` of GTKWave 4.0.0-prealpha (OSS CAD Suite 2026-11-26) and of GTKWave 3.3. */
+    @Test
+    fun gtkwaveVersionDecidesHowItIsControlled() {
+        assertEquals(
+            Waveforms.GtkwaveKind.WCP,
+            Waveforms.gtkwaveKind("  -a, --save=FILE            specify savefile name\n  --wcp                      enable WCP server\n"),
+        )
+        assertEquals(Waveforms.GtkwaveKind.TCL, Waveforms.gtkwaveKind("  -R, --repscript=FILE       specifies a timer-driven Tcl command script file\n"))
+        assertEquals(Waveforms.GtkwaveKind.NONE, Waveforms.gtkwaveKind(""))
+    }
+
+    @Test
+    fun gtkwave4IsConnectedToGreetedAndToldToReload() {
+        java.net.ServerSocket(0, 1, InetAddress.getLoopbackAddress()).use { server ->
+            server.soTimeout = 10_000
+            GtkwaveWcpControl(server.localPort).use { control ->
+                assertEquals(listOf("--wcp", "--wcp-port=${server.localPort}"), control.arguments)
+                var reloaded = false
+                val commands = thread { reloaded = control.reload(raise = true) && control.addSignals(listOf("TOP.tb.q")) }
+                server.accept().use { gtkwave ->
+                    gtkwave.soTimeout = 10_000
+                    assertEquals("""{"type":"greeting","version":"0","commands":[]}""", message(gtkwave.getInputStream()))
+                    assertEquals("""{"type":"command","command":"reload"}""", message(gtkwave.getInputStream()))
+                    assertEquals(
+                        """{"type":"command","command":"add_variables","variables":["TOP.tb.q"]}""",
+                        message(gtkwave.getInputStream()),
+                    )
+                    commands.join(10_000)
+                    assertTrue(reloaded)
+                }
+            }
+        }
     }
 
     @Test

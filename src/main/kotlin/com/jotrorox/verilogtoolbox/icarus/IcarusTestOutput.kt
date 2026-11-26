@@ -6,27 +6,18 @@ package com.jotrorox.verilogtoolbox.icarus
  * Icarus 13 reports `$error`, `$fatal` and failing assertions on standard output as
  * `ERROR: tb.sv:5: message` and `FATAL: tb.sv:5: message`, followed by a `Time: 5  Scope: tb` line.
  * Only `$fatal` makes `vvp` return non-zero (always 1); after `$error`, `$finish(n)` and, under `-n`,
- * `$stop` it returns 0, so the reports have to be read to see a failure. `iverilog` returns non-zero
- * (2) when the design does not compile and prints the reason on standard error.
+ * `$stop` it returns 0, so the reports have to be read to see a failure. That the design does not compile,
+ * `iverilog` tells by its exit code, which [SimulationTestsProcessHandler] looks at.
  */
-class IcarusTestOutput {
-    /** Why a testbench failed: [message] is the headline, [details] the text below it. */
-    data class Failure(val message: String, val details: String)
-
+class IcarusTestOutput : SimulationOutput {
     /** A `$error` or `$fatal` report; [location] is the `file:line` it came from. */
     data class Report(val fatal: Boolean, val location: String, val message: String)
 
-    private val compilerOutput = StringBuilder()
     private val line = StringBuilder()
     private var firstReport: Report? = null
     private var reports = 0
 
-    fun compilerText(text: String) {
-        compilerOutput.append(text)
-    }
-
-    /** Takes the simulation's standard output as it arrives, in chunks that need not end at a line break. */
-    fun simulatorText(text: String) {
+    override fun simulatorText(text: String) {
         line.append(text)
         while (true) {
             val end = line.indexOf("\n")
@@ -44,27 +35,19 @@ class IcarusTestOutput {
         reports++
     }
 
-    /** What `iverilog` printed, for the console when the design compiled: its warnings. */
-    val compilerMessages: String
-        get() = compilerOutput.toString()
-
-    fun compilationFailure(exitCode: Int): Failure? =
-        if (exitCode == 0) null
-        else Failure("Compilation failed", compilerOutput.toString().trimEnd().ifEmpty { "iverilog exited with code $exitCode" })
-
     /** The first report is the failure: later ones tend to follow from it. */
-    fun simulationFailure(exitCode: Int): Failure? {
+    override fun simulationFailure(exitCode: Int): SimulationOutput.Failure? {
         simulatorLine(line.toString())
         line.setLength(0)
         val report = firstReport
-            ?: return if (exitCode == 0) null else Failure("vvp exited with code $exitCode", "")
+            ?: return if (exitCode == 0) null else SimulationOutput.Failure("vvp exited with code $exitCode", "")
         val message = report.message.ifEmpty { if (report.fatal) "\$fatal was called" else "Assertion failed" }
         val others = when (reports) {
             1 -> ""
             2 -> "\n1 more error was reported."
             else -> "\n${reports - 1} more errors were reported."
         }
-        return Failure(message, "at ${report.location}$others")
+        return SimulationOutput.Failure(message, "at ${report.location}$others")
     }
 
     companion object {

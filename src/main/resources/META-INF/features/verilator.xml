@@ -1,8 +1,12 @@
-<!-- Verilator lint. Included by plugin.xml. -->
+<!-- Verilator: lint, and simulation built with CMake. Included by plugin.xml. -->
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
         <!-- Verilator: a second source of diagnostics, linting the open file in the design. -->
         <externalAnnotator language="Verilog"
                            implementationClass="com.jotrorox.verilogtoolbox.verilator.VerilatorExternalAnnotator"/>
+        <!-- Verilator simulation of a Verilog or C++ testbench, built with CMake. -->
+        <configurationType implementation="com.jotrorox.verilogtoolbox.verilator.VerilatorConfigurationType"/>
+        <runConfigurationProducer
+                implementation="com.jotrorox.verilogtoolbox.verilator.VerilatorRunConfigurationProducer"/>
     </extensions>
 </idea-plugin>

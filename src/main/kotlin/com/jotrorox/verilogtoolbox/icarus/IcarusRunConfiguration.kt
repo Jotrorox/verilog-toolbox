@@ -31,6 +31,7 @@ import com.jotrorox.verilogtoolbox.common.OssCadSuite
 import com.jotrorox.verilogtoolbox.lsp.SlangDesign
 import com.jotrorox.verilogtoolbox.settings.ToolchainSettings
 import com.jotrorox.verilogtoolbox.verilog.VerilogFileType
+import com.jotrorox.verilogtoolbox.waveform.WaveformSource
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -78,13 +79,13 @@ class IcarusRunConfigurationOptions : LocatableRunConfigurationOptions() {
 
 /** Compiles a testbench with `iverilog` and runs the result with `vvp`. */
 class IcarusRunConfiguration(project: Project, factory: ConfigurationFactory, name: String) :
-    LocatableConfigurationBase<IcarusRunConfigurationOptions>(project, factory, name) {
+    LocatableConfigurationBase<IcarusRunConfigurationOptions>(project, factory, name), WaveformSource {
 
     val settings: IcarusRunConfigurationOptions
         get() = options as IcarusRunConfigurationOptions
 
     /** The testbench file, or null while none is configured. */
-    val testbenchFile: Path?
+    override val testbenchFile: Path?
         get() = settings.testbench?.takeIf { it.isNotBlank() }?.let { runCatching { Path.of(it) }.getOrNull() }
 
     /** The directory whose testbenches are all run, or null when the configuration runs a single testbench. */
@@ -140,7 +141,7 @@ class IcarusRunConfiguration(project: Project, factory: ConfigurationFactory, na
         get() = configuredFileList ?: SlangDesign.getInstance(project).fileList
 
     /** The module that is simulated: the configured one, by default the first testbench of the file, which is read. */
-    fun resolveTopModule(): String? =
+    override fun resolveTopModule(): String? =
         settings.topModule?.takeIf { it.isNotBlank() } ?: testbenchFile?.let { file ->
             runCatching { VerilogTestbenches.testbenches(Files.readString(file)).firstOrNull()?.name }.getOrNull()
         }

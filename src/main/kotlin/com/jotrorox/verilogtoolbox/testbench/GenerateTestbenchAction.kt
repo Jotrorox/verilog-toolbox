@@ -19,7 +19,32 @@ import com.jotrorox.verilogtoolbox.verilog.isVerilog
 import java.io.IOException
 
 /** Writes `<module>_tb.sv` next to a module: the one at the caret, the file's only one, or one the user picks. */
-class GenerateTestbenchAction : DumbAwareAction() {
+class GenerateTestbenchAction : TestbenchGeneratorAction("Generate Testbench") {
+    override fun fileName(module: VerilogModuleHeaders.Module): String = VerilogTestbenchGenerator.fileName(module)
+
+    override fun generate(module: VerilogModuleHeaders.Module): String = VerilogTestbenchGenerator.generate(module)
+
+    override val stimulusMarker: String = VerilogTestbenchGenerator.STIMULUS_MARKER
+}
+
+/** Writes `<module>_tb.cpp`, a C++ testbench for Verilator, next to a module. */
+class GenerateVerilatorCppTestbenchAction : TestbenchGeneratorAction("Generate Verilator C++ Testbench") {
+    override fun fileName(module: VerilogModuleHeaders.Module): String = VerilatorCppTestbenchGenerator.fileName(module)
+
+    override fun generate(module: VerilogModuleHeaders.Module): String = VerilatorCppTestbenchGenerator.generate(module)
+
+    override val stimulusMarker: String = VerilatorCppTestbenchGenerator.STIMULUS_MARKER
+}
+
+/** Writes a testbench file next to a module: the one at the caret, the file's only one, or one the user picks. */
+abstract class TestbenchGeneratorAction(private val title: String) : DumbAwareAction() {
+    protected abstract fun fileName(module: VerilogModuleHeaders.Module): String
+
+    protected abstract fun generate(module: VerilogModuleHeaders.Module): String
+
+    /** Where in the testbench the editor opens. */
+    protected abstract val stimulusMarker: String
+
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
@@ -44,7 +69,7 @@ class GenerateTestbenchAction : DumbAwareAction() {
                 project, "${file.name} has no module with ports to write a testbench for.", NotificationType.WARNING,
             )
             else -> JBPopupFactory.getInstance().createPopupChooserBuilder(designs.map { it.name })
-                .setTitle("Generate Testbench For")
+                .setTitle("$title For")
                 .setItemChosenCallback { name -> create(project, file, designs.first { it.name == name }) }
                 .createPopup()
                 .showInBestPositionFor(e.dataContext)
@@ -57,20 +82,20 @@ class GenerateTestbenchAction : DumbAwareAction() {
 
     private fun create(project: Project, source: VirtualFile, design: VerilogModuleHeaders.Module) {
         val directory = source.parent ?: return
-        val name = VerilogTestbenchGenerator.fileName(design)
+        val name = fileName(design)
         val existing = directory.findChild(name)
         if (existing != null) {
             // A testbench that exists has been worked on; opening it is the safe default.
             val choice = Messages.showDialog(
-                project, "'$name' already exists in ${directory.presentableUrl}.", "Generate Testbench",
+                project, "'$name' already exists in ${directory.presentableUrl}.", title,
                 arrayOf("Overwrite", "Open Existing", Messages.getCancelButton()), 1, Messages.getWarningIcon(),
             )
             if (choice == 1) return OpenFileDescriptor(project, existing).navigate(true)
             if (choice != 0) return
         }
-        val text = VerilogTestbenchGenerator.generate(design)
+        val text = generate(design)
         val testbench = try {
-            WriteCommandAction.writeCommandAction(project).withName("Generate Testbench").compute<VirtualFile, IOException> {
+            WriteCommandAction.writeCommandAction(project).withName(title).compute<VirtualFile, IOException> {
                 val target = existing ?: directory.createChildData(this, name)
                 // An open testbench is replaced through its document, so the editor and undo follow.
                 val document = FileDocumentManager.getInstance().getDocument(target)
@@ -80,7 +105,7 @@ class GenerateTestbenchAction : DumbAwareAction() {
         } catch (e: IOException) {
             return notify(project, "'$name' could not be written: ${e.message}", NotificationType.ERROR)
         }
-        val stimulus = text.indexOf(VerilogTestbenchGenerator.STIMULUS_MARKER).coerceAtLeast(0)
+        val stimulus = text.indexOf(stimulusMarker).coerceAtLeast(0)
         OpenFileDescriptor(project, testbench, stimulus).navigate(true)
     }
 

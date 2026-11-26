@@ -30,7 +30,7 @@ object IcarusCommandLines {
 
     /** [report] receives lines about the design that is compiled, for the console. */
     @Throws(ExecutionException::class)
-    fun create(configuration: IcarusRunConfiguration, report: (String) -> Unit = {}): List<GeneralCommandLine> {
+    fun create(configuration: IcarusRunConfiguration, report: (String) -> Unit = {}): List<SimulationStep> {
         val toolchain = ToolchainSettings.getInstance()
         val iverilog = toolchain.findIverilog() ?: throw ExecutionException("iverilog was not found.")
         val vvp = toolchain.findVvp() ?: throw ExecutionException("vvp was not found.")
@@ -74,7 +74,7 @@ object IcarusCommandLines {
         simulate.addParameters(ParametersListUtil.parse(settings.simulatorOptions.orEmpty()))
         simulate.addParameter(design.toString())
         simulate.addParameters(ParametersListUtil.parse(settings.simulationArguments.orEmpty()))
-        return listOf(compile, simulate)
+        return listOf(SimulationStep(compile), SimulationStep(simulate))
     }
 
     private fun readFileList(file: Path, project: Project, report: (String) -> Unit): FileList {
@@ -148,6 +148,6 @@ object IcarusCommandLines {
     }
 
     /** Every project directory with Verilog files, searched for the modules and headers the sources refer to. */
-    private fun libraryDirectories(project: Project): List<Path> =
+    internal fun libraryDirectories(project: Project): List<Path> =
         ReadAction.nonBlocking(Callable { VerilogDesign.libraryDirectories(project) }).inSmartMode(project).executeSynchronously()
 }

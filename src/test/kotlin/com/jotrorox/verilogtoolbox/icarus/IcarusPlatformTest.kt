@@ -3,7 +3,6 @@ package com.jotrorox.verilogtoolbox.icarus
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.execution.configurations.ConfigurationTypeUtil
-import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
@@ -48,8 +47,8 @@ class IcarusPlatformTest : BasePlatformTestCase() {
     }
 
     /** Runs [steps] as one test and returns the standard output and exit code of the run. */
-    private fun run(steps: () -> List<GeneralCommandLine>): Pair<String, Int> {
-        val handler = IcarusTestsProcessHandler { listOf(IcarusTestbench("tb", null, null, null, { steps() })) }
+    private fun run(steps: () -> List<SimulationStep>): Pair<String, Int> {
+        val handler = SimulationTestsProcessHandler { listOf(SimulationTest("tb", null, null, null, { steps() })) }
         val output = StringBuilder()
         var exitCode = -1
         handler.addProcessListener(object : ProcessListener {

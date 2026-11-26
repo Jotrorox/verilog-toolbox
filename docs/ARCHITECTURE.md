@@ -21,10 +21,10 @@ All under `src/main/kotlin/com/jotrorox/verilogtoolbox/`:
 | `settings`       | Tool paths and options, and the **Settings → Tools → Verilog Toolbox** page                |
 | `verilog`        | The Verilog/SystemVerilog language: file type, lexer, highlighting, folding, templates, module headers |
 | `lsp`            | slang-server and Verible language servers, their downloads, and the design slang-server elaborates |
-| `icarus`         | Icarus Verilog run configurations, testbench discovery and the test runner                 |
-| `testbench`      | The testbench generator                                                                    |
+| `icarus`         | Icarus Verilog run configurations, testbench discovery and the test runner both simulators use |
+| `testbench`      | The testbench generators: Verilog, and C++ for Verilator                                   |
 | `waveform`       | GTKWave and Surfer                                                                         |
-| `verilator`      | Verilator lint                                                                             |
+| `verilator`      | Verilator lint, and simulation built with CMake                                            |
 | `yosys`          | Check Synthesis with Yosys                                                                 |
 | `quartus`        | Quartus Prime: projects, runs, pins, reports, the tool window                              |
 | `quartus.tcl`    | The Tcl dialect of `.qsf`, `.qpf`, `.qip` and `.sdc` files                                 |
@@ -74,6 +74,23 @@ project's own command, such as `make`; `gowin.GowinBuild` is the built-in flow f
 FPGA family (iCE40 with `nextpnr-ice40` and `icepack`, ECP5 with `nextpnr-ecp5` and `ecppack`) would be a
 package like `gowin`: board presets, a `BuildPlan`, detection of its constraint files in
 `OpenFpgaLoaderProject.detect`, and a choice in `BuildMode`.
+
+## Simulators
+
+Icarus Verilog and Verilator share the test runner of `icarus`: a run is a `SimulationTestsProcessHandler` of
+`SimulationTest`s, each a list of `SimulationStep`s (command lines) whose last one is the simulation and whose
+output a `SimulationOutput` reads (`IcarusTestOutput`, `VerilatorTestOutput`). `VerilogTestbenches` and
+`VerilogTestLocator` find testbenches and lead tree nodes back to them. The waveform viewers take any
+`waveform.WaveformSource`, which both run configurations are. These pieces could move to a package of their own
+should a third simulator come.
+
+A Verilator simulation is built without Verilator's Makefiles and `verilator-config.cmake`, which need `make`,
+Python or Perl. `VerilatorSimulation` runs `verilator --cc --make json` (`--make cmake` before 5.030), and
+`VerilatorCMakeProject` writes a plain CMake project from the list of generated files that `VerilatorManifest`
+reads, with a custom command that verilates again when a source changes. `CppToolchain` finds CMake, Ninja and
+on Windows MinGW, taking CLion's bundled copies when there are none; CLion's own API is not used, so that the
+plugin depends on no CLion internals. `LoadCMakeProjectAction` hands the project to CLion through the id of its
+Load CMake Project action.
 
 ## Adding a tool
 

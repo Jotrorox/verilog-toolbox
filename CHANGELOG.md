@@ -6,6 +6,17 @@
 
 ### Added
 
+- Verilator as a simulator, not only for lint: a *Verilator* run configuration that verilates a Verilog
+  testbench with `--main --timing`, or a C++ testbench that drives the Verilated model, builds it with CMake and
+  shows the results in the test tree, with Open Waveform and the reload after a re-run as for Icarus Verilog.
+  Settings | Tools | Verilog Toolbox | Simulation chooses which simulator the run icon of a testbench uses
+- The simulation is built without `make`, Python or Perl: the plugin writes the CMake project from Verilator's
+  list of the files it generated, in `build/verilator`, and builds it with the CMake and Ninja on the PATH or
+  CLion's own, and on Windows CLion's MinGW. Load CMake Project in CLion, in the toolbar of the run, gives CLion
+  the project, so that its CMake application and CTest configurations build, run and debug the simulations
+- Generate Verilator C++ Testbench for a module: the model, a waveform, clock and reset, and a `CHECK` macro
+  whose failures show in the test tree
+
 - GOWIN EDA support like that for Quartus Prime: a **GOWIN EDA** tool window with an Overview (device, top
   module, the steps of the last build, timing, resources, reports), a Pins tab that edits pins, I/O types, pull
   modes and drive in the `.cst` with the package's pins and the device's I/O types offered, and the messages of
@@ -41,6 +52,9 @@
 
 ### Fixed
 
+- GTKWave 4, which the OSS CAD Suite now has, opens again: it was started with GTKWave 3's Tcl options, which it
+  refuses. It is told to reload and to add signals over WCP, as Surfer is. The suite's GTKWave also finds its
+  libraries on Windows now
 - Verilator lint and Check Synthesis of a file outside the selected file list added the parts of its path
   to the design instead of the file
 - Reports with a `°` in them, written by Quartus on Windows in its code page, were not read: the tool window

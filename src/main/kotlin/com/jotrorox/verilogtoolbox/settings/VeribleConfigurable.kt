@@ -191,7 +191,28 @@ class VeribleConfigurable : Configurable, Configurable.NoScroll, Configurable.No
                     .component
             }
         }
-        group("Verilator Lint") {
+        group("Simulation") {
+            row("Simulate testbenches with:") {
+                comboBox(TestbenchSimulator.entries)
+                    .bindItem(toolchain::testbenchSimulator.toNullableProperty())
+                    .wrappingComment(
+                        "What the run icon of a testbench and Run 'Testbenches in …' of a directory use. Verilator " +
+                            "is much faster and knows more SystemVerilog; it builds the simulation with CMake in " +
+                            "<code>build/verilator</code>, which CLion can load to debug it. Run configurations that " +
+                            "exist keep their simulator."
+                    )
+            }
+            row("Path to cmake:") {
+                textFieldWithBrowseButton(FileChooserDescriptorFactory.singleFile().withTitle("Select cmake"))
+                    .bindText(toolchain::cmakePath)
+                    .align(AlignX.FILL)
+                    .wrappingComment(
+                        "Builds Verilator's simulations. Leave empty to use the cmake on your PATH, or else the IDE's " +
+                            "own, with its Ninja and, on Windows, its MinGW."
+                    )
+            }
+        }
+        group("Verilator") {
             row {
                 checkBox("Lint open files with Verilator")
                     .bindSelected(toolchain::verilatorLintEnabled)
@@ -207,7 +228,7 @@ class VeribleConfigurable : Configurable, Configurable.NoScroll, Configurable.No
                     .align(AlignX.FILL)
                     .wrappingComment("Leave empty to use the OSS CAD Suite's, or else the verilator found on your PATH.")
             }
-            row("Options:") {
+            row("Lint options:") {
                 textField()
                     .bindText(toolchain::verilatorOptions)
                     .align(AlignX.FILL)
