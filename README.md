@@ -20,6 +20,9 @@ Verilog and SystemVerilog support for CLion.
 - [Quartus Prime](https://www.altera.com/products/development-tools/quartus) without its window: compile,
   program the device, assign pins and read timing and resource reports from the IDE, with the design of the
   `.qsf` shared with every other tool
+- [GOWIN EDA](https://www.gowinsemi.com/en/support/download_eda/) without its window: build and program a
+  `.gprj` project, assign pins, I/O types, pull modes and drive in a table, and read the timing, resources and
+  messages of the last build, with the design shared with every other tool
 - Program the FPGA with [openFPGALoader](https://github.com/trabucayre/openFPGALoader): build the bitstream,
   load it into SRAM or write it to flash, with the board and bitstream read from the project's Makefile
 - One click from Verilog to a Gowin board without a Makefile: the plugin builds the bitstream with Yosys,
@@ -126,6 +129,62 @@ those of the `.qip` files it lists. A file list is written from it to `build/qua
 up to date. Megafunctions and primitives such as `altpll` are taken from Quartus's simulation libraries, which
 can be switched off in the settings. **Stop Using Quartus Project as Design** goes back to how it was; a `.f`
 file or a top level selected by hand is never replaced.
+
+### GOWIN EDA
+
+A project with a GOWIN EDA project in it (`.gprj`) gets a **GOWIN EDA** tool window, and the project needs no
+setting up: it is found when the IDE project opens, and GOWIN EDA is found on your `PATH` or where it installs
+by default (`C:\Gowin\Gowin_V…`, `~/gowin`, `/opt/gowin`, the newest version), or where Settings | Tools |
+Verilog Toolbox says. The Standard and the Education edition work.
+
+**Building.** The toolbar of the tool window and **Tools | GOWIN EDA** run *Synthesize*, *Place & Route* and
+*Run All*, through `gw_sh` as GOWIN EDA's own IDE does. Each is an ordinary run configuration, so it can be run
+again with the run widget. The console colours the messages by severity, links every file they name to the
+line, and ends with a summary: the resources, whether timing is met with the worst slacks and Fmax, the
+bitstream, and after a failure the errors once more. Left to itself, GOWIN EDA takes the first module nothing
+instantiates for the top, which may be a leftover; when the project names none, the plugin takes the module
+whose ports the `.cst` places, and says so. Right-clicking a `.gprj` offers **Run 'Build …'** too.
+
+**Programming.** *Program Device* and *Run All and Program Device* run GOWIN's `programmer_cli` with the
+project's device and bitstream. The bitstream goes to SRAM by default; the run configuration writes it to
+flash instead, choosing the embedded flash of the LittleBee devices or the external SPI flash of the Arora
+ones, or runs any other operation of the programmer, with the cable, the JTAG frequency and extra options for
+when the defaults do not fit. The Sipeed Tang boards work with the default cable.
+
+**Overview.** The tool window shows the device with its LUTs, registers and I/Os, the top module, the steps of
+the last build with their times, timing (Fmax against what the `.sdc` asks, and the worst slack of each check,
+failing ones in red), the resources used and links to the reports. It says when sources changed since the last
+build and when a project has no pin or no timing constraints.
+
+**Pins.** The *Pins* tab lists the ports of the top module, one row per bit, with their pin, I/O type, pull
+mode and drive, all edited in place and written to the `.cst` as `IO_LOC` and `IO_PORT` statements, one
+undoable step each; a project without a `.cst` gets one. The pins of the device's package are offered with
+their bank and what else they do (`GCLKT_3`, `TMS`, …), and the I/O types the device supports for the port's
+direction, both from GOWIN EDA's own tables. After a build the pins and settings place and route used are
+shown, those the `.cst` leaves open greyed. Two ports on one pin, and pins the package does not have, are marked.
+
+**Messages.** The *Messages* tab has the errors and warnings of the last run, notes on request; double-click
+goes to the source or the line of the `.cst`. Before a run in the IDE it shows those of the logs in `impl`.
+
+**Reports.** The reports in `impl` open in the same viewer as Quartus's: the place and route report
+(`.rpt.txt`), the timing report (`.tr`), the logs of synthesis and of place and route, and the HTML reports of
+synthesis, power and pins. The sections are listed on the left under their headings (the summaries of timing,
+the tables of paths, each path of the detailed analysis with its slack and end points) and searched by title and
+contents. Tables sort and filter, parts of a resource are set in and get a gauge, negative slack is red; the
+messages of a log are filtered by severity and lead to the source. The title says whether timing is met, whether
+a step succeeded, or the total power. The text, or the HTML, is one click away.
+
+**The project.** **New GOWIN EDA Project…** writes a `.gprj` for a part from GOWIN EDA's catalog, or for a
+Sipeed Tang board, with the project's Verilog sources, a `.cst` and an `.sdc` with the board's clock.
+**Add to / Remove from GOWIN EDA Project** and **Set as GOWIN EDA Top Module** are in the context menu of files,
+**Device…** changes the part. The `.gprj` and the options in `impl/project_process_config.json` are changed
+as GOWIN EDA writes them, so that its IDE opens the same project: **Open in GOWIN EDA** is there for what
+remains, such as the FloorPlanner and the IP Core Generator.
+
+**The design.** The `.gprj` describes the design to the other tools as well: slang-server, Verilator lint,
+Check Synthesis and Icarus Verilog runs read its sources, include paths and top module. A file list is written
+from it to `build/gowin-eda/<project>.f` and kept up to date. **Stop Using GOWIN EDA Project as Design** goes
+back to how it was.
 
 ### openFPGALoader
 

@@ -42,6 +42,7 @@ class ToolchainSettings :
         @JvmField var synthesisTarget: SynthesisTarget = SynthesisTarget.GENERIC,
         @JvmField var quartusPath: String = "",
         @JvmField var quartusSimulationLibraries: Boolean = true,
+        @JvmField var gowinEdaPath: String = "",
         @JvmField var openFpgaLoaderPath: String = "",
     )
 
@@ -147,6 +148,16 @@ class ToolchainSettings :
         get() = state.quartusSimulationLibraries
         set(value) {
             updateState { it.copy(quartusSimulationLibraries = value) }
+        }
+
+    /**
+     * Where GOWIN EDA is installed: its version directory, such as `C:\Gowin\Gowin_V1.9.12.04_x64`, its `IDE`
+     * directory or the directory of its tools. Empty means "on PATH, or where it installs by default".
+     */
+    var gowinEdaPath: String
+        get() = state.gowinEdaPath
+        set(value) {
+            updateState { it.copy(gowinEdaPath = value.trim()) }
         }
 
     /** Path to `openFPGALoader`; empty means "use the OSS CAD Suite's, or else look it up on PATH". */

@@ -4,6 +4,13 @@ The plugin is organised by feature: each tool or file type has its own Kotlin pa
 descriptor. Adding support for something new means adding one package and one descriptor, and including
 the descriptor from `plugin.xml`.
 
+`gowin.eda` follows `quartus` file for file (project, service, run, run configuration, actions, devices, pins,
+reports, tool window), so that what is learnt in one applies to the other. It reuses two generic pieces of
+`quartus`: `QuartusPins.nodes`, which expands the ports of a module into the bits a pin is assigned to, and
+`QuartusFilteringComboBox`; they could move to `common` should a third vendor need them. Its reports are shown
+in Quartus's report viewer: `GowinEdaReportDocument` reads them into a `QuartusReportDocument`, which
+`QuartusReportView` takes a parser for.
+
 ## Packages
 
 All under `src/main/kotlin/com/jotrorox/verilogtoolbox/`:
@@ -23,6 +30,7 @@ All under `src/main/kotlin/com/jotrorox/verilogtoolbox/`:
 | `quartus.tcl`    | The Tcl dialect of `.qsf`, `.qpf`, `.qip` and `.sdc` files                                 |
 | `openfpgaloader` | Programming FPGAs with openFPGALoader                                                      |
 | `gowin`          | Gowin `.cst` files and their checks, board presets, and the built-in Yosys/nextpnr/gowin_pack build |
+| `gowin.eda`      | GOWIN EDA: `.gprj` projects, `gw_sh` and `programmer_cli` runs, pins, reports, the tool window |
 
 Tests mirror the same packages under `src/test/kotlin/`. Plain unit tests are named `…Test`, tests that need
 the IntelliJ platform `…PlatformTest`.

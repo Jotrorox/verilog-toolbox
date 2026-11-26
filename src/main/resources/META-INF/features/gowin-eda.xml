@@ -1,0 +1,131 @@
+<!-- GOWIN EDA: its projects (.gprj), run configurations, tool window and actions. Included by plugin.xml. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- A .gprj is XML, though its header says version "1"; it opens with XML highlighting. -->
+        <fileType name="XML" extensions="gprj"/>
+        <!-- The timing report (impl/pnr/<name>.tr) as text; the file type knows it by where it is, not by .tr alone. -->
+        <fileType name="GOWIN EDA Report" fieldName="INSTANCE"
+                  implementationClass="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaReportFileType"/>
+        <!-- The reports of the flow open in a viewer of their sections, with the text one click away. -->
+        <fileEditorProvider implementation="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaReportEditorProvider"/>
+        <configurationType implementation="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaConfigurationType"/>
+        <runConfigurationProducer implementation="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaRunConfigurationProducer"/>
+        <postStartupActivity implementation="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaStartupActivity"/>
+        <toolWindow id="GOWIN EDA" anchor="right" icon="/icons/gowinEdaToolWindow.svg" canCloseContents="false"
+                    factoryClass="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <!-- GOWIN EDA: what its window is opened for, from building the bitstream to programming the device. -->
+        <group id="VerilogToolbox.GowinEda" text="GOWIN EDA" popup="true" icon="/icons/gowinEda.svg"
+               description="Build the GOWIN EDA project, program its device and assign its pins">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="VerilogToolbox.GowinEda.NewProject"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaNewProjectAction"
+                    text="New GOWIN EDA Project…"
+                    description="Create a GOWIN EDA project (.gprj) for a device or board, with the Verilog sources of this project"
+                    icon="AllIcons.General.Add"/>
+            <separator/>
+            <action id="VerilogToolbox.GowinEda.Synthesize"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaSynthesizeAction"
+                    text="Synthesize"
+                    description="Synthesize the design with GowinSynthesis"
+                    icon="AllIcons.Actions.Checked"/>
+            <action id="VerilogToolbox.GowinEda.PlaceAndRoute"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaPlaceAndRouteAction"
+                    text="Place &amp;&amp; Route"
+                    description="Place and route the synthesized design and write its bitstream"/>
+            <action id="VerilogToolbox.GowinEda.Build"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaBuildAction"
+                    text="Run All"
+                    description="Synthesize, place and route the GOWIN EDA project and write its bitstream"
+                    icon="AllIcons.Actions.Compile"/>
+            <action id="VerilogToolbox.GowinEda.Program"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaProgramAction"
+                    text="Program Device"
+                    description="Program the device with the bitstream of the last build"
+                    icon="AllIcons.Actions.Download"/>
+            <action id="VerilogToolbox.GowinEda.BuildAndProgram"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaBuildAndProgramAction"
+                    text="Run All and Program Device"
+                    description="Build the GOWIN EDA project and, if that succeeds, program the device"
+                    icon="AllIcons.Actions.Execute"/>
+            <separator/>
+            <action id="VerilogToolbox.GowinEda.ShowOverview"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaShowOverviewAction"
+                    text="Overview"
+                    description="Show the device, the last build, its timing and its resources in the GOWIN EDA tool window"/>
+            <action id="VerilogToolbox.GowinEda.ShowPins"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaShowPinsAction"
+                    text="Pins"
+                    description="Assign the ports of the top module to pins and I/O types in the GOWIN EDA tool window"/>
+            <action id="VerilogToolbox.GowinEda.ShowMessages"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaShowMessagesAction"
+                    text="Messages"
+                    description="Show the errors and warnings of the last build in the GOWIN EDA tool window"/>
+            <group id="VerilogToolbox.GowinEda.Reports"
+                   class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaReportsGroup"
+                   text="Reports" popup="true" icon="AllIcons.Actions.ListFiles"
+                   description="Open a report of the last build"/>
+            <action id="VerilogToolbox.GowinEda.ChangeDevice"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaChangeDeviceAction"
+                    text="Device…"
+                    description="Choose the part and the device version the project is built for"/>
+            <action id="VerilogToolbox.GowinEda.OpenConstraints"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaOpenConstraintsAction"
+                    text="Open Pin Constraints"
+                    description="Open the .cst of the project, or create one"/>
+            <action id="VerilogToolbox.GowinEda.OpenProjectFile"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaOpenProjectFileAction"
+                    text="Open Project File"
+                    description="Open the .gprj, which lists the device and the files of the project"
+                    icon="AllIcons.General.Settings"/>
+            <action id="VerilogToolbox.GowinEda.OpenInGowin"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaOpenInGowinAction"
+                    text="Open in GOWIN EDA"
+                    description="Open the project in GOWIN EDA itself"
+                    icon="AllIcons.Ide.External_link_arrow"/>
+            <action id="VerilogToolbox.GowinEda.Refresh"
+                    class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaRefreshAction"
+                    text="Refresh"
+                    description="Look for GOWIN EDA project files and reports again"
+                    icon="AllIcons.Actions.Refresh"/>
+        </group>
+        <!-- The toolbar of the GOWIN EDA tool window. -->
+        <group id="VerilogToolbox.GowinEda.Toolbar">
+            <reference ref="VerilogToolbox.GowinEda.Synthesize"/>
+            <reference ref="VerilogToolbox.GowinEda.Build"/>
+            <reference ref="VerilogToolbox.GowinEda.Program"/>
+            <reference ref="VerilogToolbox.GowinEda.BuildAndProgram"/>
+            <separator/>
+            <reference ref="VerilogToolbox.GowinEda.Reports"/>
+            <reference ref="VerilogToolbox.GowinEda.OpenProjectFile"/>
+            <reference ref="VerilogToolbox.GowinEda.OpenInGowin"/>
+            <reference ref="VerilogToolbox.GowinEda.Refresh"/>
+        </group>
+        <!-- On files: what belongs to the GOWIN EDA project, and which module is its top. -->
+        <action id="VerilogToolbox.GowinEda.AddFile"
+                class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaAddFileAction"
+                text="Add to GOWIN EDA Project"
+                description="List this file in the .gprj of the GOWIN EDA project">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+        </action>
+        <action id="VerilogToolbox.GowinEda.RemoveFile"
+                class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaRemoveFileAction"
+                text="Remove from GOWIN EDA Project"
+                description="Take this file out of the .gprj of the GOWIN EDA project">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+        </action>
+        <action id="VerilogToolbox.GowinEda.SetTopModule"
+                class="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaSetTopModuleAction"
+                text="Set as GOWIN EDA Top Module"
+                description="Make this module the top module of the GOWIN EDA project">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

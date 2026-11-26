@@ -28,6 +28,8 @@ import com.jotrorox.verilogtoolbox.lsp.SlangServerDownloader
 import com.jotrorox.verilogtoolbox.lsp.VeribleDownloader
 import com.jotrorox.verilogtoolbox.lsp.VeribleLspIntegrationProvider
 import com.jotrorox.verilogtoolbox.openfpgaloader.OpenFpgaLoader
+import com.jotrorox.verilogtoolbox.gowin.eda.GowinEda
+import com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaProjectService
 import com.jotrorox.verilogtoolbox.quartus.Quartus
 import com.jotrorox.verilogtoolbox.quartus.QuartusProjectService
 import com.jotrorox.verilogtoolbox.waveform.WaveformViewer
@@ -65,6 +67,8 @@ class VeribleConfigurable : Configurable, Configurable.NoScroll, Configurable.No
     private lateinit var suiteStatus: JEditorPane
     private lateinit var quartusField: TextFieldWithBrowseButton
     private lateinit var quartusStatus: JEditorPane
+    private lateinit var gowinEdaField: TextFieldWithBrowseButton
+    private lateinit var gowinEdaStatus: JEditorPane
     private lateinit var openFpgaLoaderField: TextFieldWithBrowseButton
     private lateinit var openFpgaLoaderStatus: JEditorPane
 
@@ -284,6 +288,29 @@ class VeribleConfigurable : Configurable, Configurable.NoScroll, Configurable.No
                     )
             }
         }
+        group("GOWIN EDA") {
+            row("Installation:") {
+                gowinEdaField = textFieldWithBrowseButton(
+                    FileChooserDescriptorFactory.singleDir().withTitle("Select the GOWIN EDA Installation")
+                )
+                    .bindText(toolchain::gowinEdaPath)
+                    .align(AlignX.FILL)
+                    .wrappingComment(
+                        "The directory GOWIN EDA is installed in, such as " +
+                            (if (SystemInfo.isWindows) "<code>C:\\Gowin\\Gowin_V1.9.12.04_x64</code>" else "<code>~/gowin</code>") +
+                            ". Leave empty to find it on your PATH or where it installs by default."
+                    )
+                    .component
+            }
+            row {
+                gowinEdaStatus = comment(gowinEdaStatusText()).component
+                gowinEdaField.textField.document.addDocumentListener(object : DocumentAdapter() {
+                    override fun textChanged(e: DocumentEvent) {
+                        gowinEdaStatus.text = gowinEdaStatusText()
+                    }
+                })
+            }
+        }
         group("Waveform Viewer") {
             row("Viewer:") {
                 comboBox(WaveformViewer.entries)
@@ -330,6 +357,14 @@ class VeribleConfigurable : Configurable, Configurable.NoScroll, Configurable.No
         val installation = Quartus.find(path)
             ?: return if (path.isBlank()) "Quartus Prime was not found." else "There is no Quartus Prime in this directory."
         return "Found ${installation.displayName} in ${installation.quartusDirectory?.parent ?: installation.binDirectory}."
+    }
+
+    /** Says which GOWIN EDA the path in the field, which need not be applied yet, stands for. */
+    private fun gowinEdaStatusText(): String {
+        val path = if (::gowinEdaField.isInitialized) gowinEdaField.text else toolchain.gowinEdaPath
+        val installation = GowinEda.find(path)
+            ?: return if (path.isBlank()) "GOWIN EDA was not found." else "There is no GOWIN EDA in this directory."
+        return "Found ${installation.displayName} in ${installation.rootDirectory}."
     }
 
     private fun slangStatusText(): String {
@@ -395,6 +430,7 @@ class VeribleConfigurable : Configurable, Configurable.NoScroll, Configurable.No
         // Verilator lint follows its settings in the open files, and a Quartus design its libraries.
         for (project in ProjectManager.getInstance().openProjects) {
             QuartusProjectService.getInstance(project).changed()
+            GowinEdaProjectService.getInstance(project).changed()
             DaemonCodeAnalyzer.getInstance(project).restart("Verilog Toolbox settings changed")
         }
     }

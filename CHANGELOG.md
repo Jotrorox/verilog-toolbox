@@ -6,6 +6,18 @@
 
 ### Added
 
+- GOWIN EDA support like that for Quartus Prime: a **GOWIN EDA** tool window with an Overview (device, top
+  module, the steps of the last build, timing, resources, reports), a Pins tab that edits pins, I/O types, pull
+  modes and drive in the `.cst` with the package's pins and the device's I/O types offered, and the messages of
+  the last build; **Tools | GOWIN EDA** to synthesize, place and route, build and program with `programmer_cli`
+  (SRAM or flash), each as a run configuration with a summary at the end of the console; New GOWIN EDA Project
+  for a part or a Sipeed Tang board, Device…, Add to / Remove from GOWIN EDA Project, Set as GOWIN EDA Top
+  Module and Open in GOWIN EDA. The `.gprj` is the design of slang-server and the other tools, and GOWIN EDA's
+  installation is found by itself or set in the settings
+- GOWIN EDA's reports open in the report viewer: the place and route report, the timing report with each path
+  of the detailed analysis as a section of its own, the logs with their messages, and the HTML reports of
+  synthesis, power and pins, with whether timing is met, the step succeeded or the total power at the top
+
 - A viewer for Quartus reports (`.rpt`) and pin-out files (`.pin`): the sections listed and grouped, with a
   search of titles and contents; tables that sort numerically and filter, with hierarchies set in, a gauge
   for the resources used and negative slack in red; messages by severity that go to the source; whether the

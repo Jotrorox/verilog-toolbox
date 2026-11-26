@@ -24,6 +24,9 @@
                 cable or FPGA is not found</li>
             <li>Gowin boards in one click without a Makefile: the bitstream is built with Yosys, nextpnr and
                 gowin_pack, with presets for the Sipeed Tang boards, then programmed</li>
+            <li>GOWIN EDA without its window: build and program a <code>.gprj</code> project, assign pins and I/O types
+                in a table, and read the timing, resources and messages of the last build, with the design shared
+                with the other tools</li>
             <li>Highlighting and checks for Gowin physical constraint files (<code>.cst</code>)</li>
             <li>Open waveforms in GTKWave or Surfer, reloaded after every re-run, and add the signal at the caret</li>
             <li>One <code>.f</code> file list defines the design for slang-server and the simulator</li>
@@ -59,4 +62,5 @@
     <xi:include href="/META-INF/features/quartus.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="/META-INF/features/openfpgaloader.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="/META-INF/features/gowin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="/META-INF/features/gowin-eda.xml" xpointer="xpointer(/idea-plugin/*)"/>
 </idea-plugin>

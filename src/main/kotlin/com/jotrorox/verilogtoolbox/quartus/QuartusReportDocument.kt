@@ -24,6 +24,11 @@ class QuartusReportDocument(
     /** The lines below the title: the date and the version of Quartus. */
     val details: List<String>,
     val sections: List<Section>,
+    /**
+     * What the header says about the outcome, for reports of other tools read into this model, such as GOWIN
+     * EDA's; a Quartus report has it in its [status] or [timing].
+     */
+    val verdict: String? = null,
 ) {
     sealed class Section {
         abstract val title: String
