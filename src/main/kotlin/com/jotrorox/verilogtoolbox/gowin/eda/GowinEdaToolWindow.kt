@@ -340,7 +340,7 @@ internal class GowinEdaOverviewPanel(private val project: Project) : SimpleToolW
                 }
             }
             compilation.reports.firstOrNull { it.first == "Timing Report" }?.let { (_, file) ->
-                row { link("Timing report") { GowinEdaActions.open(project, file) } }
+                row { link("Timing report") { openGowinReport(project, file, "Max Frequency Summary") } }
             }
         }
     }

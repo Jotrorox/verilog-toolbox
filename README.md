@@ -153,9 +153,8 @@ when the defaults do not fit. The Sipeed Tang boards work with the default cable
 
 **Overview.** The tool window shows the device with its LUTs, registers and I/Os, the top module, the steps of
 the last build with their times, timing (Fmax against what the `.sdc` asks, and the worst slack of each check,
-failing ones in red), the resources used and links to the reports: the text ones open in the editor, the HTML
-ones in the browser. It says when sources changed since the last build and when a project has no pin or no
-timing constraints.
+failing ones in red), the resources used and links to the reports. It says when sources changed since the last
+build and when a project has no pin or no timing constraints.
 
 **Pins.** The *Pins* tab lists the ports of the top module, one row per bit, with their pin, I/O type, pull
 mode and drive, all edited in place and written to the `.cst` as `IO_LOC` and `IO_PORT` statements, one
@@ -166,6 +165,14 @@ shown, those the `.cst` leaves open greyed. Two ports on one pin, and pins the p
 
 **Messages.** The *Messages* tab has the errors and warnings of the last run, notes on request; double-click
 goes to the source or the line of the `.cst`. Before a run in the IDE it shows those of the logs in `impl`.
+
+**Reports.** The reports in `impl` open in the same viewer as Quartus's: the place and route report
+(`.rpt.txt`), the timing report (`.tr`), the logs of synthesis and of place and route, and the HTML reports of
+synthesis, power and pins. The sections are listed on the left under their headings (the summaries of timing,
+the tables of paths, each path of the detailed analysis with its slack and end points) and searched by title and
+contents. Tables sort and filter, parts of a resource are set in and get a gauge, negative slack is red; the
+messages of a log are filtered by severity and lead to the source. The title says whether timing is met, whether
+a step succeeded, or the total power. The text, or the HTML, is one click away.
 
 **The project.** **New GOWIN EDA Project…** writes a `.gprj` for a part from GOWIN EDA's catalog, or for a
 Sipeed Tang board, with the project's Verilog sources, a `.cst` and an `.sdc` with the board's clock.

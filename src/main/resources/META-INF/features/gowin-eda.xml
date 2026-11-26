@@ -3,6 +3,11 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- A .gprj is XML, though its header says version "1"; it opens with XML highlighting. -->
         <fileType name="XML" extensions="gprj"/>
+        <!-- The timing report (impl/pnr/<name>.tr) as text; the file type knows it by where it is, not by .tr alone. -->
+        <fileType name="GOWIN EDA Report" fieldName="INSTANCE"
+                  implementationClass="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaReportFileType"/>
+        <!-- The reports of the flow open in a viewer of their sections, with the text one click away. -->
+        <fileEditorProvider implementation="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaReportEditorProvider"/>
         <configurationType implementation="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaConfigurationType"/>
         <runConfigurationProducer implementation="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaRunConfigurationProducer"/>
         <postStartupActivity implementation="com.jotrorox.verilogtoolbox.gowin.eda.GowinEdaStartupActivity"/>

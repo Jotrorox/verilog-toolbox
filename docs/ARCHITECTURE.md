@@ -7,7 +7,9 @@ the descriptor from `plugin.xml`.
 `gowin.eda` follows `quartus` file for file (project, service, run, run configuration, actions, devices, pins,
 reports, tool window), so that what is learnt in one applies to the other. It reuses two generic pieces of
 `quartus`: `QuartusPins.nodes`, which expands the ports of a module into the bits a pin is assigned to, and
-`QuartusFilteringComboBox`; they could move to `common` should a third vendor need them.
+`QuartusFilteringComboBox`; they could move to `common` should a third vendor need them. Its reports are shown
+in Quartus's report viewer: `GowinEdaReportDocument` reads them into a `QuartusReportDocument`, which
+`QuartusReportView` takes a parser for.
 
 ## Packages
 

@@ -30,7 +30,6 @@ import kotlin.io.path.name
 /** What the GOWIN EDA actions share: feedback, background work, opening files and the edits of the file list. */
 internal object GowinEdaActions {
     private val HEADER_EXTENSIONS = setOf("vh", "svh")
-    private val TEXT_REPORTS = setOf("txt", "tr", "log")
 
     fun notify(project: Project, content: String, type: NotificationType = NotificationType.INFORMATION) {
         NotificationGroupManager.getInstance().getNotificationGroup("Verilog Toolbox").createNotification(content, type).notify(project)
@@ -68,9 +67,12 @@ internal object GowinEdaActions {
     /** `uart.sv` for one file, `3 files` for more. */
     fun describe(files: List<Path>): String = files.singleOrNull()?.name ?: "${files.size} files"
 
-    /** Opens [file] in the editor at [line] counted from 1, or an HTML report in the browser. Does nothing for a file that is gone. */
+    /**
+     * Opens [file] in the editor at [line] counted from 1; a report of the flow opens in the report viewer, other
+     * HTML in the browser. Does nothing for a file that is gone.
+     */
     fun open(project: Project, file: Path, line: Int? = null) {
-        if (file.extension.lowercase() in setOf("html", "htm")) {
+        if (file.extension.lowercase() in setOf("html", "htm") && !GowinEdaReportDocument.isReport(file.toString())) {
             if (Files.isRegularFile(file)) BrowserUtil.browse(file)
             return
         }
@@ -79,8 +81,6 @@ internal object GowinEdaActions {
         descriptor.navigate(true)
     }
 
-    /** Whether a report opens in the editor rather than the browser. */
-    fun isTextReport(file: Path): Boolean = file.extension.lowercase() in TEXT_REPORTS
 }
 
 /** Runs a flow on the GOWIN EDA project of the IDE project. Off while another one runs: they share `impl`. */
@@ -104,7 +104,7 @@ class GowinEdaBuildAction : GowinEdaFlowAction(GowinEdaFlow.BUILD)
 class GowinEdaBuildAndProgramAction : GowinEdaFlowAction(GowinEdaFlow.BUILD_AND_PROGRAM)
 class GowinEdaProgramAction : GowinEdaFlowAction(GowinEdaFlow.PROGRAM)
 
-/** The reports of the last run, the text ones opening in the editor and the HTML ones in the browser. */
+/** The reports of the last run, which open in the report viewer. */
 class GowinEdaReportsGroup : ActionGroup(), DumbAware {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
@@ -115,8 +115,7 @@ class GowinEdaReportsGroup : ActionGroup(), DumbAware {
     override fun getChildren(e: AnActionEvent?): Array<AnAction> {
         val project = e?.project ?: return emptyArray()
         return reports(project).map { (title, file) ->
-            val where = if (GowinEdaActions.isTextReport(file)) "Open ${file.fileName}" else "Open ${file.fileName} in the browser"
-            object : DumbAwareAction(title, where, null) {
+            object : DumbAwareAction(title, "Open ${file.fileName}", null) {
                 override fun actionPerformed(e: AnActionEvent) = GowinEdaActions.open(project, file)
             }
         }.toTypedArray()

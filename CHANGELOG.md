@@ -14,6 +14,9 @@
   for a part or a Sipeed Tang board, Device…, Add to / Remove from GOWIN EDA Project, Set as GOWIN EDA Top
   Module and Open in GOWIN EDA. The `.gprj` is the design of slang-server and the other tools, and GOWIN EDA's
   installation is found by itself or set in the settings
+- GOWIN EDA's reports open in the report viewer: the place and route report, the timing report with each path
+  of the detailed analysis as a section of its own, the logs with their messages, and the HTML reports of
+  synthesis, power and pins, with whether timing is met, the step succeeded or the total power at the top
 
 - A viewer for Quartus reports (`.rpt`) and pin-out files (`.pin`): the sections listed and grouped, with a
   search of titles and contents; tables that sort numerically and filter, with hierarchies set in, a gauge

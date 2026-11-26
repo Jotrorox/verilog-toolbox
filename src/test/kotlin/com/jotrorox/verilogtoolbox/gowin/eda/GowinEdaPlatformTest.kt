@@ -122,6 +122,71 @@ class GowinEdaPlatformTest : BasePlatformTestCase() {
         assertTrue(rows.joinToString("\n"), rows.all { it.placed != null && it.location == it.placed!!.location })
         assertTrue(GowinEdaDevices.packagePins(installation, project.device).any { it.index == "52" && it.bank == 1 })
         assertTrue("LVCMOS33" in GowinEdaDevices.ioStandards(installation, project.device?.name).getValue("input"))
+
+        // Every report the build wrote reads into sections of the viewer.
+        val reports = Files.walk(project.implDirectory).use { paths -> paths.filter { GowinEdaReportDocument.isReport(it.toString()) }.toList() }
+        assertTrue(reports.map { it.fileName.toString() }.toString(), reports.size >= 7)
+        for (file in reports) {
+            val document = GowinEdaReportDocument.parse(GowinEdaReports.read(file)!!, file.fileName.toString())
+            assertTrue("${file.fileName}: ${document.sections.map { it.title }}", document.sections.isNotEmpty())
+        }
+        val timingReport = GowinEdaReportDocument.parse(Files.readString(project.pnrOutput("tr")), "blinky.tr")
+        assertTrue(timingReport.verdict!!, timingReport.verdict!!.startsWith("Timing requirements met"))
+        val fmax = timingReport.sections.filterIsInstance<com.jotrorox.verilogtoolbox.quartus.QuartusReportDocument.Table>()
+            .single { it.title.endsWith("Max Frequency Summary") }
+        assertEquals("clk", fmax.rows.single().cells[1].text)
+        val pnrReport = GowinEdaReportDocument.parse(Files.readString(project.pnrOutput("rpt.txt")), "blinky.rpt.txt")
+        assertTrue(pnrReport.sections.map { it.title }.containsAll(listOf("Resource Usage Summary", "Pinout by Port Name", "All Package Pins")))
+        val synthesis = GowinEdaReportDocument.parse(GowinEdaReports.read(project.synthesisOutput("_syn.rpt.html"))!!, "blinky_syn.rpt.html")
+        assertTrue(synthesis.sections.map { it.title }.toString(), synthesis.sections.any { it.title == "Resource: Resource Usage Summary" })
+        assertTrue(synthesis.sections.any { it.title.startsWith("Path 1: ") })
+        val power = GowinEdaReportDocument.parse(GowinEdaReports.read(project.pnrOutput("power.html"))!!, "blinky.power.html")
+        assertTrue(power.verdict.orEmpty(), power.verdict.orEmpty().startsWith("Total Power"))
+    }
+
+    fun testReportsOpenInTheViewer() {
+        val text = """
+            Note:Core Timing Report
+
+            1. Timing Messages
+            <Report Title>: Timing Analysis Report
+            <Design File>: C:\p\impl\gwsynthesis\blinky.vg
+
+            2. Timing Summaries
+            2.1 STA Tool Run Summary
+            <Numbers of Setup Violated Endpoints>:0
+            <Numbers of Hold Violated Endpoints>:0
+
+            2.3 Max Frequency Summary
+              NO.   Clock Name   Constraint    Actual Fmax    Level   Entity
+             ===== ============ ============= ============== ======= ========
+              1     clk          27.000(MHz)   109.417(MHz)   5       TOP
+        """.trimIndent() + "\n"
+        val file = myFixture.addFileToProject("impl/pnr/blinky.tr", text).virtualFile
+        assertEquals(GowinEdaReportFileType, file.fileType)
+        assertFalse(myFixture.addFileToProject("notes/blinky.tr", "").virtualFile.fileType == GowinEdaReportFileType)
+        val provider = com.intellij.openapi.fileEditor.FileEditorProvider.EP_FILE_EDITOR_PROVIDER.extensionList
+            .filterIsInstance<GowinEdaReportEditorProvider>().single()
+        assertTrue(provider.accept(project, file))
+        assertFalse(provider.accept(project, myFixture.addFileToProject("impl/pnr/cmd.do", "").virtualFile))
+
+        val editor = provider.createEditor(project, file) as com.jotrorox.verilogtoolbox.quartus.QuartusReportEditor
+        try {
+            editor.component
+            val panel = editor.previewEditor.component as com.jotrorox.verilogtoolbox.quartus.QuartusReportPanel
+            com.intellij.testFramework.PlatformTestUtil.waitWithEventsDispatching("The report was not read", { panel.listedTitles.isNotEmpty() }, 10)
+            assertEquals(
+                listOf("Timing Messages", "Timing Summaries: STA Tool Run Summary", "Timing Summaries: Max Frequency Summary"),
+                panel.listedTitles,
+            )
+            assertEquals("The summary is shown first", "Timing Summaries: STA Tool Run Summary", panel.selectedTitle)
+            editor.select("Max Frequency Summary")
+            assertEquals("Timing Summaries: Max Frequency Summary", panel.selectedTitle)
+            panel.search("109.417")
+            assertEquals(listOf("Timing Summaries: Max Frequency Summary"), panel.listedTitles)
+        } finally {
+            com.intellij.openapi.util.Disposer.dispose(editor)
+        }
     }
 
     fun testReportsTheErrorsOfAFailedBuild() {

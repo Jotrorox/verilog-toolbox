@@ -111,12 +111,13 @@ class QuartusReportEditorProvider : FileEditorProvider, DumbAware {
     }
 }
 
-/** The report next to its text, the report shown to begin with. */
+/** The report next to its text, the report shown to begin with. GOWIN EDA's reports are shown in it too. */
 class QuartusReportEditor internal constructor(
     private val project: Project,
     text: TextEditor,
     private val view: QuartusReportView,
-) : TextEditorWithPreview(text, view, "Quartus Report", Layout.SHOW_PREVIEW) {
+    name: String = "Quartus Report",
+) : TextEditorWithPreview(text, view, name, Layout.SHOW_PREVIEW) {
     init {
         view.showLine = ::showLine
     }
@@ -139,8 +140,12 @@ class QuartusReportEditor internal constructor(
     }
 }
 
-/** The report of a file, read again whenever its text changes. */
-class QuartusReportView internal constructor(project: Project, private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
+/** The report of a file, read again whenever its text changes, with [parse], which reads a Quartus report unless another is given. */
+class QuartusReportView internal constructor(
+    project: Project,
+    private val file: VirtualFile,
+    private val parse: (CharSequence) -> QuartusReportDocument = QuartusReportDocument::parse,
+) : UserDataHolderBase(), FileEditor {
     internal var showLine: (Int) -> Unit = {}
     private val panel = QuartusReportPanel(project, file) { showLine(it) }
     private val document = FileDocumentManager.getInstance().getDocument(file)
@@ -161,7 +166,7 @@ class QuartusReportView internal constructor(project: Project, private val file:
         val current = ++generation
         AppExecutorUtil.getAppExecutorService().execute {
             val report = try {
-                QuartusReportDocument.parse(text ?: VfsUtilCore.loadText(file))
+                parse(text ?: VfsUtilCore.loadText(file))
             } catch (e: Exception) {
                 LOG.warn("Cannot read the report ${file.path}", e)
                 null
@@ -277,7 +282,7 @@ internal class QuartusReportPanel(
         views.clear()
         shown = null
         title.text = report?.title ?: file.name
-        val reportStatus = report?.status ?: report?.timing
+        val reportStatus = report?.verdict ?: report?.status ?: report?.timing
         status.text = reportStatus.orEmpty()
         status.icon = when (reportStatus?.let { QuartusReportValues.verdict(it, "") }) {
             null -> if (reportStatus == null) null else AllIcons.General.Information
@@ -1007,7 +1012,8 @@ internal object QuartusReportValues {
     /** A number at the start, followed by a unit, a percent sign or a part in parentheses; not by letters, as in `25.1std`. */
     private val NUMBER = Regex("""^[<>~]?\s*(-?[\d,]*\.?\d+)(?=$|\s|%|\()""")
     private val TIME = Regex("""^(\d+):(\d{2}):(\d{2})$""")
-    private val USAGE = Regex("""^([\d,]+)\s*/\s*([\d,]+)\s*\(""")
+    /** `9,993 / 49,760 ( 20 % )` as Quartus writes it, or `45/8640` as GOWIN EDA does, with the percentage in a column of its own. */
+    private val USAGE = Regex("""^([\d,]+)\s*/\s*([\d,]+)\s*(?:\(|$)""")
 
     /** The number a value starts with: `9993 (893)`, `54.45 MHz`, `25.8%`, `-1.250`; times as seconds. */
     fun number(value: String): Double? {

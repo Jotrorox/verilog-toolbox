@@ -315,7 +315,7 @@ class GowinEdaCompilation(project: GowinEdaProject) {
     private fun stamp(file: Path): Long = runCatching { Files.getLastModifiedTime(file).toMillis() }.getOrDefault(0)
 
     companion object {
-        /** The reports a project's flow writes, by title, as functions of the project; the text ones open in the editor. */
+        /** The reports a project's flow writes, by title, as functions of the project. */
         private val REPORTS: List<Pair<String, (GowinEdaProject) -> Path>> = listOf(
             "Place & Route Report" to { it.pnrOutput("rpt.txt") },
             "Timing Report" to { it.pnrOutput("tr") },
